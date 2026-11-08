@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Estacionamento</title>
+<h1>Estacionamento</h1>
+<p>Vagas disponíveis agora: <b id="livres">-</b></p>
+<p>Entradas na semana: <b id="entradas">-</b> | Saídas na semana: <b id="saidas">-</b></p>
+<script>
+async function atualizar() {
+  const resposta = await fetch('/api/resumo');
+  const d = await resposta.json();
+  document.getElementById('livres').textContent = d.vagas - d.dentro;   // vagas disponíveis
+  document.getElementById('entradas').textContent = d.entradas;
+  document.getElementById('saidas').textContent = d.saidas;
+}
+atualizar();
+setInterval(atualizar, 2000);
+</script>

@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guia do Estacionamento Inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Ideia de layout: a pessoa escolhe a tarefa no topo e lê só a ficha dela; mapas e regras gerais ficam abaixo, como consulta. Cada tarefa tem a sua cor. */
+:root{
+  --bg:#f2f5f0; --surface:#ffffff; --ink:#14211a; --muted:#52625a; --line:#d3dbd1;
+  --accent:#0d6b49; --accent-ink:#ffffff; --badge-ink:#ffffff;
+  --code-bg:#0f1a14; --code-ink:#e4f1e8; --code-muted:#8fa89a;
+  --warn:#8a5200; --warn-bg:#fff3d9; --ok:#17743a; --ok-bg:#e3f4e8; --bad:#a6261d; --bad-bg:#fde7e4;
+  --pcb:#e3ecdd; --pcb-line:#9db296;
+  --t1:#2f5fc4; --t2:#0b7d71; --t3:#ad5a00; --t4:#b0307f; --t5:#3f7d14; --t6:#c0392b; --t7:#6d49c9; --t8:#7a5c3a;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Consolas,"Courier New",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1410; --surface:#151f19; --ink:#e8f0ea; --muted:#9db0a4; --line:#27372e;
+    --accent:#4cc38f; --accent-ink:#06150e; --badge-ink:#0a120d;
+    --code-bg:#0a110d; --code-ink:#e4f1e8; --code-muted:#7f9a8a;
+    --warn:#f0bb62; --warn-bg:#2b2210; --ok:#6bd68f; --ok-bg:#12281b; --bad:#ff8c82; --bad-bg:#33140f;
+    --pcb:#17261d; --pcb-line:#3a5846;
+    --t1:#6a98f5; --t2:#35c4b3; --t3:#e59a3c; --t4:#e56db9; --t5:#85cb55; --t6:#ef7468; --t7:#a68ff2; --t8:#bc986e;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1410; --surface:#151f19; --ink:#e8f0ea; --muted:#9db0a4; --line:#27372e;
+  --accent:#4cc38f; --accent-ink:#06150e; --badge-ink:#0a120d;
+  --code-bg:#0a110d; --code-ink:#e4f1e8; --code-muted:#7f9a8a;
+  --warn:#f0bb62; --warn-bg:#2b2210; --ok:#6bd68f; --ok-bg:#12281b; --bad:#ff8c82; --bad-bg:#33140f;
+  --pcb:#17261d; --pcb-line:#3a5846;
+  --t1:#6a98f5; --t2:#35c4b3; --t3:#e59a3c; --t4:#e56db9; --t5:#85cb55; --t6:#ef7468; --t7:#a68ff2; --t8:#bc986e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55}
+a{color:var(--accent)}
+code,kbd{font-family:var(--font-mono);font-size:.9em}
+:not(pre)>code{background:color-mix(in srgb,var(--ink) 8%,transparent);padding:.08em .35em;border-radius:4px;overflow-wrap:anywhere}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:clamp(1.9rem,4.4vw,2.8rem);font-weight:700;letter-spacing:-.015em}
+h2{font-size:1.6rem;font-weight:700;letter-spacing:-.005em}
+h3{font-size:1.3rem;font-weight:700}
+h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:0}
+h4 code{text-transform:none;letter-spacing:0}
+p{margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+/* cada tarefa define --c */
+.k0{--c:var(--muted)} .k1{--c:var(--t1)} .k2{--c:var(--t2)} .k3{--c:var(--t3)} .k4{--c:var(--t4)}
+.k5{--c:var(--t5)} .k6{--c:var(--t6)} .k7{--c:var(--t7)} .k8{--c:var(--t8)}
+.cr{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--c);color:var(--badge-ink);font-weight:700;font-size:.95rem;flex:none}
+
+/* topo */
+.topo{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topo .wrap{display:flex;align-items:center;gap:20px;min-height:52px}
+.marca{font-weight:700;text-decoration:none;color:var(--ink);white-space:nowrap}
+.topo nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
+.topo nav a{padding:6px 10px;border-radius:6px;text-decoration:none;color:var(--muted);font-size:.9rem;white-space:nowrap}
+.topo nav a:hover{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+
+section{padding:52px 0 4px;scroll-margin-top:56px}
+.cabeca{display:flex;flex-direction:column;gap:6px;margin-bottom:20px;max-width:70ch}
+.cabeca p{color:var(--muted)}
+.abre{padding-top:36px}
+.lead{font-size:1.2rem;max-width:56ch;margin-top:10px;color:var(--muted)}
+.tres{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 0;padding:0;list-style:none;counter-reset:p}
+.tres li{counter-increment:p;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 16px 6px 6px;font-weight:500}
+.tres li::before{content:counter(p);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:.9rem}
+.tres a{text-decoration:none;color:var(--ink)}
+.tres a:hover{text-decoration:underline}
+.hero-acoes{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-top:22px}
+.hero-acoes .tres{margin:0}
+.btn-placa{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--accent);color:var(--accent);border-radius:99px;padding:5px 18px 5px 10px;font-weight:600;text-decoration:none;background:var(--surface)}
+.btn-placa:hover{background:var(--accent);color:var(--accent-ink)}
+.btn-placa.mini{padding:4px 14px 4px 8px;font-size:.88rem;white-space:nowrap}
+.foco-aviso{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--warn-bg);border-left:4px solid var(--warn);border-radius:0 8px 8px 0;padding:8px 14px;font-size:.92rem}
+.foco-aviso[hidden]{display:none}
+.foco-aviso button{font-family:var(--font-body);font-size:.85rem;font-weight:600;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 12px;cursor:pointer}
+
+figure{margin:0}
+figcaption{color:var(--muted);font-size:.88rem;margin-top:8px}
+.moldura{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.rolar{overflow-x:auto}
+.rolar>svg{min-width:760px}
+.rolar>svg.esq,.rolar>svg.lig,.rolar>svg.painel,.rolar>svg.estados{min-width:400px}
+.rolar>svg.rc{min-width:320px}
+svg{display:block;max-width:100%;height:auto;color:var(--ink)}
+svg text{font-family:var(--font-body)}
+.dica-rolar{display:none;font-size:.8rem;color:var(--muted);margin-top:6px}
+
+/* ===== SVGs da placa e do sistema ===== */
+.pcb{fill:var(--pcb);stroke:var(--pcb-line);stroke-width:1.5}
+.furo{fill:none;stroke:var(--pcb-line);stroke-width:1}
+.furo-fix{fill:var(--bg);stroke:var(--pcb-line);stroke-width:1.2}
+.num{font-size:9px;fill:var(--muted);font-family:var(--font-mono)}
+.coord{font-size:10px;font-weight:700;fill:var(--ink);font-family:var(--font-mono)}
+.coord-faixa{fill:var(--pcb);opacity:.97}
+.cracha-g{display:var(--cracha,inline)}
+.j1{fill:none;stroke:var(--muted);stroke-dasharray:5 4;stroke-width:1.2}
+.rot-j1{font-size:11px;fill:var(--muted)}
+.rot{font-size:10.5px;fill:var(--ink);font-weight:600;paint-order:stroke;stroke:var(--pcb);stroke-width:3px}
+.peca{fill:color-mix(in srgb,var(--c) 17%,transparent);stroke:var(--c);stroke-width:1.7}
+.pad{fill:var(--surface);stroke:var(--c);stroke-width:1.7}
+.pad-j1{fill:var(--c)}
+.pin{font-size:9.5px;fill:var(--ink);font-family:var(--font-mono);paint-order:stroke;stroke:var(--pcb);stroke-width:3px}
+.pino-usado{font-size:9px;font-weight:700;fill:var(--c);font-family:var(--font-mono)}
+.pino-pot{font-size:7.5px;fill:var(--muted);font-family:var(--font-mono)}
+.pino-livre{fill:none;stroke:var(--pcb-line);stroke-width:1.2}
+.p5{fill:#d64541}.p3{fill:#e8892b}.pg{fill:#2b302d;stroke:var(--muted);stroke-width:1}
+.cracha{fill:var(--c);stroke:var(--surface);stroke-width:2}
+.cracha-n{fill:var(--badge-ink);font-weight:700;font-size:11.5px}
+.placa{width:100%}
+.zoom{width:100%;max-width:460px;border:1px solid var(--line);border-radius:8px;background:var(--pcb)}
+.zoom.estreito{max-width:300px}
+.pad-g{fill:var(--c)}
+.n-pino-on{fill:var(--badge-ink);font-size:12.5px;font-weight:700;font-family:var(--font-mono)}
+.n-pino-pot{fill:#fff;font-size:11.5px;font-family:var(--font-mono)}
+.n-pino-off{fill:var(--muted);font-size:11.5px;font-family:var(--font-mono)}
+.gpio{font-size:11px;font-weight:700;fill:var(--c);font-family:var(--font-mono)}
+.func{font-size:11px;fill:var(--ink)}
+.gpio-off{font-size:9.5px;fill:var(--muted);font-family:var(--font-mono)}
+.pino-livre-g{fill:none;stroke:var(--pcb-line);stroke-width:1.5}
+.cab{font-size:11px;font-weight:700;letter-spacing:.07em;fill:var(--muted)}
+.caixa{fill:color-mix(in srgb,var(--c) 14%,var(--surface));stroke:var(--c);stroke-width:1.8}
+.caixa.mod{fill:var(--surface)}
+.tit{font-size:14px;font-weight:600;fill:var(--ink)}
+.sub{font-size:11.5px;fill:var(--muted)}
+.mono{font-family:var(--font-mono);font-size:14px;fill:var(--ink)}
+.seta{stroke:var(--ink);stroke-width:1.6;fill:none}
+.rot-seta{font-size:10.5px;fill:var(--muted)}
+.caixa-e{fill:var(--surface);stroke:var(--accent);stroke-width:1.8}
+.caixa-i{fill:none;stroke:var(--muted);stroke-dasharray:6 4;stroke-width:1.5}
+a.blk{cursor:pointer;text-decoration:none}
+a.blk:hover .caixa{stroke-width:3.2}
+a.blk:focus-visible{outline:none}
+a.blk:focus-visible .caixa{stroke-width:3.6}
+.jan{fill:var(--surface);stroke:var(--line);stroke-width:2}
+.cartao{fill:var(--bg);stroke:var(--line)}
+.grande{font-size:22px;font-weight:700;fill:var(--ink)}
+.grade{stroke:var(--line)}
+.b-ent{fill:var(--t1)}.b-sai{fill:var(--t3)}
+.botao{fill:var(--accent)}
+.tit-b{fill:var(--accent-ink);font-size:13px;font-weight:600}
+.tile,.mini-tile{background:#eef2ee;border:1px solid var(--line);border-radius:10px;display:grid;place-items:center}
+.tile{padding:10px;gap:10px}
+.tile .peca-img{width:100%;max-width:230px}
+.mono-img{font-family:var(--font-mono)}
+.tile .ink,.mini-tile .ink{fill:#1b241f}
+.mini-tile{padding:6px;height:78px}
+.mini-tile svg{max-height:64px;width:auto}
+.mini-tile text{display:none}
+
+/* ===== esquemas das tarefas ===== */
+svg.esq,svg.lig{width:100%}
+.e-fio{stroke:var(--ink);stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.e-comp{fill:var(--surface);stroke:var(--ink);stroke-width:1.8}
+.e-txt{font-size:13px;fill:var(--ink)}
+.e-txt-b{font-size:13px;font-weight:700;fill:var(--ink)}
+.e-halo{paint-order:stroke;stroke:var(--bg);stroke-width:5px;stroke-linejoin:round}
+.e-mut{font-size:12px;fill:var(--muted)}
+.e-mono{font-family:var(--font-mono);font-size:12.5px;fill:var(--ink)}
+.e-fio-c{stroke:var(--c);stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.e-term{fill:var(--surface);stroke:var(--c);stroke-width:2.2}
+.e-pot-t{font-family:var(--font-mono);font-size:12.5px;font-weight:700;fill:var(--c)}
+.e-gpio{font-family:var(--font-mono);font-size:13px;font-weight:700;fill:var(--c)}
+.e-ponto-x{font-family:var(--font-mono);font-size:14px;font-weight:700;fill:var(--c)}
+.e-pino-pot{font-family:var(--font-mono);font-size:13px;font-weight:700;fill:var(--ink)}
+.e-mono-b{font-family:var(--font-mono);font-size:13px;font-weight:600;fill:var(--ink)}
+.e-mono-s{font-family:var(--font-mono);font-size:10.5px;fill:var(--muted)}
+.e-mono-w{font-family:var(--font-mono);font-size:12px;font-weight:600;fill:#e6f5ee}
+.e-grande{font-size:20px;font-weight:700;fill:var(--ink)}
+.e-pulso{stroke:var(--c);stroke-width:2.6;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.e-curva2{stroke:var(--ink);stroke-width:2;fill:none;stroke-dasharray:6 4}
+.e-eixo{stroke:var(--muted);stroke-width:1.2;fill:none}
+.e-lim{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 4}
+.e-dot{fill:var(--ink)}
+.e-chip{fill:var(--c)}
+.e-chip-t{font-size:13px;font-weight:700;fill:var(--badge-ink);font-family:var(--font-mono)}
+.e-ok{font-size:12px;font-weight:700;fill:var(--ok)}
+.e-ok-b{font-size:12.5px;font-weight:700;fill:var(--ok)}
+.e-onda{stroke:var(--c);stroke-width:2.4;fill:none;stroke-linecap:round}
+.e-carro{fill:color-mix(in srgb,var(--c) 30%,var(--surface));stroke:var(--c);stroke-width:2}
+.e-vidro{fill:color-mix(in srgb,var(--c) 15%,var(--surface));stroke:var(--c)}
+.e-roda{fill:var(--ink)}
+.e-caixa{fill:color-mix(in srgb,var(--c) 10%,var(--surface));stroke:var(--c);stroke-width:1.8}
+.e-est1{fill:var(--ok-bg);stroke:var(--ok);stroke-width:1.5}
+.e-est0{fill:var(--warn-bg);stroke:var(--warn);stroke-width:1.5}
+.e-led{fill:var(--surface);stroke:var(--ink);stroke-width:1.8}
+.e-tecla{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
+.e-tecla.on{fill:color-mix(in srgb,var(--c) 35%,var(--surface));stroke:var(--c);stroke-width:2.2}
+.e-faixa{fill:color-mix(in srgb,var(--ink) 8%,transparent);stroke:var(--line)}
+.e-erro{fill:color-mix(in srgb,var(--c) 40%,transparent)}
+.e-vida{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:4 4}
+.e-passo{fill:var(--c)}
+.e-passo-n{fill:var(--badge-ink);font-size:11px;font-weight:700}
+.e-espera{fill:var(--warn-bg);stroke:var(--warn);stroke-width:1.5}
+.e-cab-tab{fill:var(--c)}
+.e-tab-t{font-size:14px;font-weight:700;fill:var(--badge-ink);font-family:var(--font-mono)}
+.e-cab{font-size:11px;font-weight:700;letter-spacing:.07em;fill:var(--muted)}
+.e-peca-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.e-placa-box{fill:color-mix(in srgb,var(--c) 12%,var(--surface));stroke:var(--c);stroke-width:1.6}
+.e-pino{fill:var(--c)}
+.e-pino-n{font-size:13px;font-weight:700;fill:var(--badge-ink);font-family:var(--font-mono)}
+.icone{width:100%;max-width:120px}
+.ic-a{fill:color-mix(in srgb,var(--c) 22%,var(--surface));stroke:var(--c);stroke-width:2.5}
+.ic-l{stroke:var(--c);stroke-width:2.5;fill:none}
+.ic-f{fill:var(--c);opacity:.6}
+
+/* ===== comandos e código ===== */
+pre{margin:0}
+.term{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:14px 16px;font-family:var(--font-mono);font-size:.86rem;line-height:1.6;overflow-x:auto}
+.term .rotulo{display:block;color:var(--code-muted);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.term .p{color:#7ee0a8}
+.term .c{color:var(--code-muted)}
+.term .hl{background:#f0c24b;color:#1d1500;border-radius:3px;padding:0 3px}
+.codigo{background:var(--code-bg);border-radius:10px;overflow:hidden}
+.cod-cab{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 8px 6px 14px;border-bottom:1px solid #ffffff1c;color:var(--code-muted);font-family:var(--font-mono);font-size:.78rem}
+.codigo pre{padding:12px 16px;overflow-x:auto;color:var(--code-ink);font-family:var(--font-mono);font-size:.83rem;line-height:1.55}
+.copiar{font-family:var(--font-body);font-size:.78rem;background:#ffffff14;color:var(--code-ink);border:1px solid #ffffff2e;border-radius:6px;padding:4px 10px;cursor:pointer}
+.copiar:hover{background:#ffffff26}
+.cmd{display:flex;gap:8px;align-items:stretch}
+.cmd code{flex:1;min-width:0;background:var(--code-bg);color:var(--code-ink);padding:9px 12px;border-radius:8px;font-size:.88rem;overflow-x:auto;white-space:nowrap}
+.cmd .copiar{background:var(--surface);color:var(--ink);border-color:var(--line)}
+
+.aviso{border-left:4px solid var(--warn);background:var(--warn-bg);border-radius:0 8px 8px 0;padding:9px 14px;font-size:.92rem}
+.aviso b:first-child{color:var(--warn)}
+.erro{border-left:4px solid var(--bad);background:var(--bad-bg);border-radius:0 8px 8px 0;padding:9px 14px;font-size:.92rem}
+.erro b:first-child{color:var(--bad)}
+.certo{border-left:4px solid var(--ok);background:var(--ok-bg);border-radius:0 8px 8px 0;padding:9px 14px;font-size:.92rem}
+.certo b:first-child{color:var(--ok)}
+
+.tabela{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.tabela>table{min-width:560px}
+/* colunas das grades nunca passam da largura da tela */
+.ref-corpo,.bloco,.run-card,.porque-corpo,.fig-card,.passo .corpo,.intro .txt,.zooms{grid-template-columns:minmax(0,1fr)}
+table{border-collapse:collapse;width:100%;font-size:.91rem}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:color-mix(in srgb,var(--ink) 4%,transparent)}
+tr:last-child td{border-bottom:0}
+td code{overflow-wrap:anywhere}
+
+/* escolha da tarefa */
+.escolha{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:12px}
+.cartao-t{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--c);border-radius:12px;padding:12px;text-decoration:none;color:var(--ink)}
+.cartao-t:hover{border-color:var(--c);box-shadow:0 3px 0 var(--c)}
+.cartao-t .nome{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem}
+.cartao-t .nome .cr{width:26px;height:26px;font-size:.85rem}
+.cartao-t .peca-txt{font-size:.82rem;color:var(--muted);margin-top:-4px}
+.cartao-t .faz{font-size:.93rem}
+.cartao-t .arq{margin-top:auto;font-size:.8rem;color:var(--muted)}
+.cartao-t .arq code{color:var(--c);font-weight:600}
+
+/* passos do Pi */
+.passos{display:grid;gap:12px}
+.passo{display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.passo>.n{width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700}
+.passo h3{font-size:1.08rem;margin-bottom:8px}
+.passo .corpo{display:grid;gap:10px;min-width:0}
+details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--bg)}
+summary{cursor:pointer;font-weight:600;font-size:.93rem}
+details[open] summary{margin-bottom:8px}
+details ul{margin:0;padding-left:1.2em;display:grid;gap:6px;font-size:.92rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.chips li{background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 14px;font-size:.88rem}
+.chips li b{font-weight:700}
+
+.leg{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:.9rem}
+.leg a{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink)}
+.leg a:hover{text-decoration:underline}
+.leg .cr{width:24px;height:24px;font-size:.8rem}
+.leg-pinos{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem;color:var(--muted);margin-top:10px}
+.leg-pinos span{display:inline-flex;align-items:center;gap:6px}
+.leg-pinos i{width:14px;height:14px;display:inline-block;border-radius:3px}
+.leg-pinos i.c{border-radius:50%}
+
+/* rodar sem conflito */
+.cartoes-run{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px;align-items:start}
+.run-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+.run-card h3{font-size:1.05rem}
+.leg-regras{display:flex;flex-wrap:wrap;gap:6px 22px;margin:12px 0 0;padding:0;list-style:none;font-size:.9rem}
+.e-conflito{fill:var(--bad-bg)}
+.e-linha{stroke:var(--line);stroke-width:1.2}
+.e-ponto{fill:var(--c)}
+.e-ponto-ant{fill:var(--bad)}
+.rolar>svg.matriz{min-width:720px}
+
+/* mapas: tela larga x estreita */
+.so-estreito{display:none}
+.so-estreito figure+figure{margin-top:12px}
+
+/* tarefas */
+.abas{display:none;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+.js .abas{display:flex}
+.aba{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);font-size:.92rem;font-weight:600;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-bottom:3px solid var(--c);border-radius:8px;padding:7px 12px 6px 8px;cursor:pointer;white-space:nowrap}
+.aba .cr{width:24px;height:24px;font-size:.8rem}
+.aba[aria-selected="true"]{background:color-mix(in srgb,var(--c) 14%,var(--surface));border-color:var(--c)}
+.tarefa{background:var(--surface);border:1px solid var(--line);border-top:6px solid var(--c);border-radius:14px;padding:22px;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;margin-bottom:24px;scroll-margin-top:64px}
+.tarefa[hidden]{display:none}
+.tarefa>*,.bloco,.intro>*,.lig-grid>*,.baixo>*{min-width:0}
+.t-cab{display:flex;gap:14px;align-items:center}
+.t-cab .cr{width:46px;height:46px;font-size:1.3rem}
+.t-cab p{color:var(--muted)}
+.t-cab>div{flex:1}
+.prog{font-size:.82rem;font-weight:600;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:3px 12px;white-space:nowrap}
+.prog.ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:-8px 0 0;list-style:none}
+.tags li{font-size:.8rem;font-weight:600;padding:3px 11px;border-radius:99px;background:color-mix(in srgb,var(--c) 13%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.tags li::before{content:"aprende ";font-weight:400;color:var(--muted)}
+.bloco{display:grid;gap:10px;align-content:start}
+.intro{display:grid;grid-template-columns:minmax(170px,230px) minmax(0,1fr);gap:16px;align-items:start}
+.intro .txt{display:grid;gap:12px}
+.fraseg{font-size:1.05rem;max-width:60ch}
+.figs{display:grid;gap:14px;align-items:start}
+.figs.dois{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.figs.dois.peq{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.figs.dois.lig-d{grid-template-columns:minmax(0,1.12fr) minmax(0,1.4fr)}
+.figs.dois.lig-e{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.fig-card{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:8px;align-content:start}
+.fig-card h4{margin-bottom:2px}
+.lig-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+.zooms{display:grid;gap:12px}
+.zooms.dois-z{grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+.baixo{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.baixo ul{margin:0;padding-left:1.2em;display:grid;gap:7px}
+.baixo ul.check{padding-left:0}
+.check{list-style:none}
+.check li{margin:0}
+.check label{display:flex;gap:10px;cursor:pointer;align-items:flex-start}
+.check input{accent-color:var(--c);width:18px;height:18px;margin:3px 0 0;flex:none}
+.check input:checked+span{color:var(--muted);text-decoration:line-through}
+.caixa-entrega{border:2px solid var(--c);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.caixa-entrega code{display:block;white-space:normal;background:color-mix(in srgb,var(--c) 9%,var(--surface));padding:5px 8px;border-radius:6px}
+.caixa-entrega p code{display:inline;padding:.08em .35em}
+.liga{font-size:.88rem;color:var(--muted)}
+.liga a{color:var(--ink);font-weight:600}
+.estado-cores{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.88rem}
+.estado-cores span{display:inline-flex;align-items:center;gap:6px}
+.estado-cores i{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid var(--ink)}
+.regras-c{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px}
+.regras-c div{border:1px solid var(--line);border-left:4px solid var(--c);border-radius:8px;padding:9px 12px;font-size:.92rem;background:var(--bg)}
+.regras-c b{display:block}
+.legenda-num{margin:0;padding:0;list-style:none;display:grid;gap:8px;counter-reset:ln}
+.legenda-num li{counter-increment:ln;display:flex;gap:10px;font-size:.92rem}
+.legenda-num li::before{content:counter(ln);flex:none;width:22px;height:22px;border-radius:50%;background:var(--c);color:var(--badge-ink);display:grid;place-items:center;font-size:.78rem;font-weight:700;margin-top:1px}
+
+/* sistema, fases, códigos, api */
+.cartoes-cod{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:10px}
+.cod-card{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--cc);border-radius:10px;padding:10px 14px;display:grid;gap:3px}
+.cod-card.ok{--cc:var(--ok)} .cod-card.av{--cc:var(--warn)} .cod-card.ru{--cc:var(--bad)}
+.cod-card .l1{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;align-items:center}
+.cod-card .l1 code{white-space:nowrap;background:none;padding:0}
+.cod-card code{font-weight:600}
+.sel{font-size:.74rem;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap;background:color-mix(in srgb,var(--cc) 15%,var(--surface));color:var(--cc)}
+.cod-card p{font-size:.88rem;color:var(--muted)}
+.cod-card p code{color:var(--ink);font-weight:400}
+.decididas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px}
+.decididas div{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--ok);border-radius:10px;padding:10px 14px;font-size:.92rem}
+.decididas b{display:block;margin-bottom:2px}
+.fase-zero,.fase-quatro{border:1px dashed var(--muted);border-radius:10px;padding:8px 14px;background:color-mix(in srgb,var(--ink) 3%,transparent);font-size:.92rem;margin:10px 0}
+table.fases td:first-child{white-space:nowrap}
+table.repo td:first-child{white-space:nowrap}
+table.repo td:first-child code{overflow-wrap:normal}
+table.fases .tp{display:inline-flex;align-items:center;gap:8px;font-weight:600}
+table.fases .tp .cr{width:24px;height:24px;font-size:.8rem}
+.receita{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:8px;padding:0;margin:0;list-style:none;counter-reset:r}
+.receita li{counter-increment:r;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px 10px 44px;position:relative;font-size:.92rem}
+.receita li::before{content:counter(r);position:absolute;left:10px;top:9px;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:.8rem;font-weight:700}
+.receita b{display:block}
+.apoio{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.apoio li a{display:block;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-size:.9rem;text-decoration:none}
+.apoio li a:hover{border-color:var(--accent)}
+footer{padding:44px 0 60px;color:var(--muted);font-size:.9rem}
+
+/* faixas que separam os blocos da página */
+.faixa-sec{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin:60px 0 6px;padding:12px 18px;border-radius:10px;scroll-margin-top:60px}
+.fs-rot{font-weight:700;letter-spacing:.09em;text-transform:uppercase;font-size:.85rem}
+.fs-txt{font-size:.95rem}
+.fs-todos{background:var(--accent);color:var(--accent-ink)}
+.fs-tarefa{background:var(--ink);color:var(--bg)}
+.fs-consulta{background:var(--muted);color:var(--bg)}
+section#conectar,section#rodar,section#tarefas{padding-top:24px}
+
+/* seções de consulta que abrem e fecham */
+details.ref{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0;margin-top:10px;scroll-margin-top:60px}
+details.ref>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px 18px;font-weight:400}
+details.ref>summary::-webkit-details-marker{display:none}
+details.ref>summary::after{content:"+";margin-left:auto;font-size:1.6rem;line-height:1;color:var(--muted);font-weight:600}
+details.ref[open]>summary::after{content:"−"}
+details.ref[open]>summary{border-bottom:1px solid var(--line);margin-bottom:0}
+details.ref>summary:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.ref-tx{display:grid;gap:2px}
+.ref-t{font-size:1.2rem;font-weight:700}
+.ref-s{color:var(--muted);font-size:.9rem}
+.ref-corpo{padding:18px;display:grid;gap:16px;min-width:0}
+.ref-corpo>*{min-width:0}
+
+/* caixa "?" com a física por trás */
+details.porque{border:1px dashed var(--c);border-radius:10px;background:color-mix(in srgb,var(--c) 5%,var(--surface));padding:0}
+details.porque>summary{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-weight:600;font-size:.95rem;list-style:none;margin:0}
+details.porque>summary::-webkit-details-marker{display:none}
+details.porque[open]>summary{margin-bottom:0;border-bottom:1px dashed var(--c)}
+details.porque summary small{color:var(--muted);font-weight:400}
+.q{width:26px;height:26px;border-radius:50%;background:var(--c);color:var(--badge-ink);display:grid;place-items:center;font-weight:700;flex:none}
+.porque-corpo{padding:14px 18px 18px;display:grid;gap:12px;min-width:0}
+.porque-corpo ul{margin:0;padding-left:1.2em;display:grid;gap:9px;font-size:.95rem}
+.porque-corpo p{font-size:.95rem;max-width:75ch}
+
+.palavras{background:color-mix(in srgb,var(--c) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 30%,transparent);border-radius:10px;padding:10px 14px}
+.palavras>b{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+.palavras ul{margin:0;padding-left:1.1em;display:grid;gap:5px;font-size:.93rem}
+.porque-corpo ol{margin:0;padding-left:1.3em;display:grid;gap:8px;font-size:.95rem}
+.porque-corpo h4{margin-top:4px}
+details.fundo{border:0;border-left:3px solid var(--c);border-radius:0;background:transparent;padding:2px 0 2px 14px}
+details.fundo>summary{font-weight:700;font-size:.93rem;color:var(--ink)}
+details.fundo[open]>summary{margin-bottom:10px}
+/* funções da entrega */
+.fn{display:grid;gap:1px}
+.fn code{display:block;white-space:normal}
+.fn span{font-size:.84rem;color:var(--muted);padding-left:4px}
+
+/* lado do cobre e ligações */
+.trilha{fill:none;stroke-width:7;stroke-linecap:round;stroke-linejoin:round;opacity:.92}
+.fio-enc{fill:none;stroke:#4a4f5a;stroke-width:3.4;stroke-linejoin:round}
+.w-rot{font-size:10px;font-weight:700;fill:var(--ink)}
+.solda{fill:var(--surface);stroke:var(--ink);stroke-width:1.4}
+.solda.j1p{fill:var(--ink);stroke:none}
+.pino-usado-c{font-size:9px;font-weight:700;fill:var(--ink);font-family:var(--font-mono)}
+.ponto-rede{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+.e-grupo{fill:color-mix(in srgb,var(--c) 14%,transparent)}
+.e-grupo-t{font-size:12px;font-weight:700;fill:var(--ink);letter-spacing:.05em;text-transform:uppercase}
+.passos-m{margin:0;padding-left:1.3em;display:grid;gap:8px}
+.cards4{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px}
+.cards4>div{background:var(--bg);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:.92rem}
+.cards4 b{display:block}
+.cards4 .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:.8rem;margin-right:6px}
+
+@media (max-width:900px){
+  .intro,.lig-grid,.baixo,.figs.dois.lig-d,.figs.dois.lig-e{grid-template-columns:minmax(0,1fr)}
+  .tile{max-width:300px}
+  .so-largo{display:none}
+  .so-estreito{display:block}
+  .dica-rolar{display:block}
+  .rolar>svg{min-width:640px}
+}
+@media (max-width:640px){
+  .t-cab{flex-wrap:wrap}
+  .t-cab>div{flex:1 1 calc(100% - 64px)}
+  .t-cab .btn-placa.mini{margin-left:60px}
+}
+@media (max-width:520px){
+  .wrap{padding:0 14px}
+  .passo{grid-template-columns:minmax(0,1fr)}
+  .tarefa{padding:14px}
+  .t-cab{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>{{PLACA_DEFS}}</defs></svg>
+
+<header class="topo">
+  <div class="wrap">
+    <a class="marca" href="#topo">Estacionamento inteligente</a>
+    <nav aria-label="Seções">
+      <a href="#escolha">Tarefas</a>
+      <a href="#conectar">Entrar no Pi</a>
+      <a href="#rodar">Sem conflito</a>
+      <a href="#consulta">Consulta</a>
+      <a href="#entregavel">Replicar a placa</a>
+      <a href="#transferencia">Entrega</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="topo" class="abre">
+  <h1>Estacionamento inteligente</h1>
+  <p class="lead">Um Raspberry Pi controla as cancelas e um painel web conta quantos carros entraram, saíram e estão dentro. Oito pessoas, oito tarefas.</p>
+  <div class="hero-acoes">
+    <ol class="tres">
+      <li><a href="#conectar">Entre no Raspberry</a></li>
+      <li><a href="#escolha">Escolha a sua tarefa</a></li>
+      <li><a href="#tarefas">Entregue um arquivo</a></li>
+    </ol>
+    <a class="btn-placa" href="#placa" title="Abre o mapa da placa e os pinos do Raspberry"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/><circle cx="6.2" cy="9" r=".6" fill="currentColor"/><circle cx="17.8" cy="15" r=".6" fill="currentColor"/></svg><span>Ver a placa e as conexões</span></a>
+  </div>
+</section>
+
+<section id="escolha">
+  <div class="cabeca"><h2>Escolha a sua tarefa</h2></div>
+  <div class="escolha">
+    <a class="cartao-t k1" href="#tarefa-1"><div class="mini-tile">{{MINI_servo}}</div><span class="nome"><span class="cr">1</span>Cancelas</span><span class="peca-txt">2 servomotores</span><span class="faz">Abre e fecha as cancelas de entrada e de saída.</span><span class="arq">Entrega <code>cancelas.py</code></span></a>
+    <a class="cartao-t k2" href="#tarefa-2"><div class="mini-tile">{{MINI_hcsr04}}</div><span class="nome"><span class="cr">2</span>Presença</span><span class="peca-txt">Sensor ultrassônico HC-SR04</span><span class="faz">Diz se há um carro na frente da cancela.</span><span class="arq">Entrega <code>presenca.py</code></span></a>
+    <a class="cartao-t k3" href="#tarefa-3"><div class="mini-tile">{{MINI_pot}}</div><span class="nome"><span class="cr">3</span>Guarita manual</span><span class="peca-txt">Potenciômetro e botão</span><span class="faz">O porteiro move a cancela na mão.</span><span class="arq">Entrega <code>manual.py</code></span></a>
+    <a class="cartao-t k4" href="#tarefa-4"><div class="mini-tile">{{MINI_led}}</div><span class="nome"><span class="cr">4</span>Sinalização</span><span class="peca-txt">LED RGB e buzzer</span><span class="faz">Cor do estado e musiquinha da cancela.</span><span class="arq">Entrega <code>sinais.py</code></span></a>
+    <a class="cartao-t k5" href="#tarefa-5"><div class="mini-tile">{{MINI_dht11}}</div><span class="nome"><span class="cr">5</span>Ambiente</span><span class="peca-txt">Sensor DHT11</span><span class="faz">Mede temperatura e umidade do pátio.</span><span class="arq">Entrega <code>ambiente.py</code></span></a>
+    <a class="cartao-t k6" href="#tarefa-6"><div class="mini-tile">{{ICONE_logica}}</div><span class="nome"><span class="cr">6</span>Lógica</span><span class="peca-txt">Python</span><span class="faz">Decide o que acontece e quando.</span><span class="arq">Entrega <code>main.py</code></span></a>
+    <a class="cartao-t k7" href="#tarefa-7"><div class="mini-tile">{{ICONE_banco}}</div><span class="nome"><span class="cr">7</span>Backend</span><span class="peca-txt">Node.js e SQLite</span><span class="faz">Guarda e conta entradas e saídas.</span><span class="arq">Entrega <code>server.js</code></span></a>
+    <a class="cartao-t k8" href="#tarefa-8"><div class="mini-tile">{{ICONE_web}}</div><span class="nome"><span class="cr">8</span>Frontend</span><span class="peca-txt">Página web</span><span class="faz">Mostra tudo no navegador.</span><span class="arq">Entrega <code>public/index.html</code></span></a>
+  </div>
+</section>
+
+<div class="faixa-sec fs-todos"><span class="fs-rot">Para todos</span><span class="fs-txt">Faça antes de começar a sua tarefa.</span></div>
+
+<section id="conectar">
+  <div class="cabeca">
+    <h2>Entrar no Raspberry</h2>
+    <p>O IP muda de rede para rede. O nome <code>raspberrypi.local</code> não muda.</p>
+  </div>
+  <div class="passos">
+    <div class="passo">
+      <span class="n">1</span>
+      <div class="corpo">
+        <h3>Descubra o IP de hoje</h3>
+        <div class="cmd"><code>ping raspberrypi.local -4</code><button class="copiar" type="button" data-copiar="ping raspberrypi.local -4">Copiar</button></div>
+        <pre class="term"><span class="rotulo">PowerShell do seu PC</span><span class="p">PS C:\&gt;</span> ping raspberrypi.local -4
+
+Disparando raspberrypi.local [<span class="hl">192.168.0.153</span>] com 32 bytes de dados:
+Resposta de 192.168.0.153: bytes=32 tempo=9ms TTL=64</pre>
+        <p>O número entre colchetes é o IP. Hoje é 192.168.0.153. Amanhã pode ser outro, então refaça o ping.</p>
+        <details>
+          <summary>O ping não achou o Raspberry?</summary>
+          <ul>
+            <li>Confira se o PC e o Raspberry estão no mesmo Wi-Fi ou no mesmo roteador. Rede de escola às vezes bloqueia: use o hotspot do celular nos dois.</li>
+            <li>No roteador: rode <code>ipconfig</code>, abra o “Gateway Padrão” (ex.: 192.168.0.1) no navegador e procure <code>raspberrypi</code> na lista de aparelhos.</li>
+            <li>No Raspberry, com teclado e monitor: <code>hostname -I</code>.</li>
+            <li>Tente direto pelo nome: <code>ssh dsm@raspberrypi.local</code>.</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+    <div class="passo">
+      <span class="n">2</span>
+      <div class="corpo">
+        <h3>Entre com SSH</h3>
+        <div class="cmd"><code>ssh dsm@192.168.0.153</code><button class="copiar" type="button" data-copiar="ssh dsm@192.168.0.153">Copiar</button></div>
+        <p>Troque pelo IP do passo 1. Na primeira vez, digite <code>yes</code>. A senha (que não aparece ao digitar) quem passa é o responsável do grupo.</p>
+      </div>
+    </div>
+    <div class="passo">
+      <span class="n">3</span>
+      <div class="corpo">
+        <h3>Crie a sua pasta e rode um teste</h3>
+        <pre class="term"><span class="rotulo">Dentro do Raspberry</span><span class="p">dsm@raspberrypi:~ $</span> cd codigos
+<span class="p">dsm@raspberrypi:~/codigos $</span> mkdir -p task3 &amp;&amp; cd task3          <span class="c"># troque 3 pelo número da sua tarefa</span>
+<span class="p">dsm@raspberrypi:~/codigos/task3 $</span> python3 ../rgb_pwm_interativo.py     <span class="c"># Ctrl+C para parar</span></pre>
+        <p>Se o LED RGB da placa mudar de cor, está tudo certo.</p>
+      </div>
+    </div>
+  </div>
+  <ul class="chips" style="margin-top:14px">
+    <li><b>Uma pasta por pessoa.</b></li>
+    <li><b>Ctrl+C</b> ao terminar, senão o pino fica preso.</li>
+    <li><b>Fios só com o Pi desligado</b> (<code>sudo poweroff</code>).</li>
+    <li><b>Tarefas 7 e 8</b> começam no PC e vão para o Pi depois.</li>
+  </ul>
+  <details style="margin-top:12px">
+    <summary>Atalhos: VS Code, copiar arquivos, IP fixo</summary>
+    <ul>
+      <li><b>VS Code:</b> extensão “Remote - SSH”, comando “Connect to Host”, <code>dsm@IP</code>. Você edita os arquivos direto no Pi.</li>
+      <li><b>Copiar arquivo do PC para o Pi:</b> <code>scp arquivo.py dsm@192.168.0.153:~/codigos/task3/</code></li>
+      <li><b>Parar de caçar IP:</b> no roteador, reserve um IP fixo para o Raspberry (reserva de DHCP).</li>
+    </ul>
+  </details>
+</section>
+
+<section id="rodar">
+  <div class="cabeca">
+    <h2>Rodar sem conflito</h2>
+    <p>Dois programas só brigam quando usam o mesmo pino. Pinos diferentes convivem bem.</p>
+  </div>
+  <figure class="moldura">
+    <div class="rolar">{{FIG_matriz_pinos}}</div>
+    <ul class="leg-regras">
+      <li><b>Tarefas 1 a 5</b> usam pinos diferentes: podem rodar ao mesmo tempo.</li>
+      <li><b>main.py</b> usa todos os pinos: só roda com os testes parados.</li>
+      <li><b>Scripts antigos</b> (colunas vermelhas) dividem pino com as tarefas: não rode juntos.</li>
+    </ul>
+  </figure>
+  <div class="aviso" style="margin-top:14px"><b>Se brigarem:</b> o segundo programa costuma falhar com <code>GPIO busy</code>. Com <code>RPi.GPIO</code> pode nem avisar: os dois mexem no mesmo pino e o resultado fica estranho. Quase sempre é um programa esquecido rodando. Ache e pare (comandos abaixo).</div>
+
+  <h4 style="margin:26px 0 10px">Como rodar</h4>
+  <div class="cartoes-run">
+    <div class="run-card">
+      <h3>1. Teste rápido, em primeiro plano</h3>
+      <div class="cmd"><code>python3 teste.py</code><button class="copiar" type="button" data-copiar="python3 teste.py">Copiar</button></div>
+      <p>O terminal fica preso ao programa. Pare com <kbd>Ctrl</kbd>+<kbd>C</kbd>. É o jeito certo de testar a sua tarefa.</p>
+    </div>
+    <div class="run-card">
+      <h3>2. Deixar rodando e fechar o SSH</h3>
+      <h4>Programa que não pergunta nada</h4>
+      <pre class="term"><span class="p">$</span> nohup python3 -u meu.py &gt; meu.log 2&gt;&amp;1 &amp;
+<span class="p">$</span> tail -f meu.log      <span class="c"># ver os print() (Ctrl+C sai)</span>
+<span class="p">$</span> pkill -f meu.py      <span class="c"># parar</span></pre>
+      <h4>Programa que pergunta (input), como o calibracao_pot2.py</h4>
+      <pre class="term"><span class="p">$</span> sudo apt install -y tmux   <span class="c"># uma vez</span>
+<span class="p">$</span> tmux new -s task3          <span class="c"># abre uma sala; rode lá</span>
+<span class="c">Ctrl+B, depois D</span>             <span class="c"># sai deixando rodando</span>
+<span class="p">$</span> tmux attach -t task3       <span class="c"># volta à sala</span>
+<span class="p">$</span> tmux kill-session -t task3 <span class="c"># apaga e para o script</span></pre>
+    </div>
+  </div>
+
+  <div class="run-card" style="margin-top:12px">
+    <h3>3. Sistema final: liga sozinho e reinicia se cair</h3>
+    <p>Quando o <code>main.py</code> estiver pronto, ele roda como serviço do sistema. Só ele fica dono dos pinos. Os módulos (<code>cancelas.py</code>, <code>presenca.py</code>...) <b>não rodam separados</b>: o <code>main.py</code> os importa.</p>
+    {{CODE:t9_servico.txt|/etc/systemd/system/estacionamento.service}}
+    <pre class="term"><span class="p">$</span> sudo nano /etc/systemd/system/estacionamento.service   <span class="c"># cole o texto acima; Ctrl+O, Enter, Ctrl+X</span>
+<span class="p">$</span> sudo systemctl daemon-reload
+<span class="p">$</span> sudo systemctl enable --now estacionamento    <span class="c"># liga agora e em todo boot</span>
+<span class="p">$</span> systemctl status estacionamento             <span class="c"># está rodando?</span>
+<span class="p">$</span> journalctl -u estacionamento -f             <span class="c"># ver os print() ao vivo (Ctrl+C sai)</span>
+<span class="p">$</span> sudo systemctl stop estacionamento          <span class="c"># parar para testar um módulo</span></pre>
+    <p class="liga">O servidor Node é igual: copie o arquivo, troque o nome para <code>estacionamento-web</code> e o <code>ExecStart</code> por <code>/usr/bin/node server.js</code> (confira com <code>which node</code>). Se o DHT11 foi instalado num venv, use <code>/home/dsm/venv/bin/python</code> no lugar de <code>/usr/bin/python3</code>.</p>
+  </div>
+
+  <h4 style="margin:26px 0 10px">Ver e parar o que está rodando</h4>
+  <pre class="term"><span class="p">$</span> pgrep -af python3                       <span class="c"># quais programas Python estão rodando, e quais arquivos</span>
+<span class="p">$</span> pgrep -af node                          <span class="c"># e quais servidores Node</span>
+<span class="p">$</span> pkill -f meu_script.py                  <span class="c"># para um programa pelo nome do arquivo</span>
+<span class="p">$</span> sudo systemctl stop estacionamento      <span class="c"># para o sistema final</span></pre>
+  <ul class="chips" style="margin-top:12px">
+    <li><b>Cada pessoa</b> testa só os pinos da própria tarefa.</li>
+    <li><b>Antes de testar um módulo</b>, pare o serviço do <code>main.py</code>.</li>
+    <li><b>Servidor Node:</b> só um na porta 3000. <code>EADDRINUSE</code> quer dizer que já tem um rodando.</li>
+    <li><b>Deixou algo rodando?</b> Avise o grupo, com o nome do script.</li>
+  </ul>
+
+  <h4 style="margin:28px 0 10px">Ao juntar todas as tarefas (fase 3)</h4>
+  <div class="tabela"><table>
+    <thead><tr><th>O que pode dar conflito</th><th>Regra</th></tr></thead>
+    <tbody>
+      <tr><td>Duas tarefas criam a mesma peça (por exemplo, o servo 1 em <code>cancelas.py</code> e em <code>manual.py</code>). Dá erro de pino em uso.</td><td>Cada peça tem um só dono: servos em <code>cancelas.py</code>, LED e buzzer em <code>sinais.py</code>, sensor em <code>presenca.py</code>, pot e botão em <code>manual.py</code>, DHT11 em <code>ambiente.py</code>. Quem precisa de outra peça chama o módulo dono.</td></tr>
+      <tr><td>Um módulo roda código ao ser importado (um <code>while True</code> solto).</td><td>Módulo só tem funções. O teste vai dentro de <code>if __name__ == "__main__":</code>.</td></tr>
+      <tr><td>Duas bibliotecas de GPIO no mesmo programa (<code>RPi.GPIO</code> do potenciômetro e <code>gpiozero</code> das outras peças).</td><td>No sistema final, ninguém chama <code>GPIO.cleanup()</code> sem argumentos. Use <code>GPIO.cleanup([12, 25])</code>. Se der erro na integração, converta o pot para <code>gpiozero</code>.</td></tr>
+      <tr><td>O callback do botão roda em outra linha de execução e mexe na cancela ao mesmo tempo que o loop.</td><td>O callback só marca uma flag. Quem mexe na cancela é o loop do <code>main.py</code>.</td></tr>
+      <tr><td>Manual e automático mexendo no servo 1 ao mesmo tempo.</td><td>O manual tem prioridade: enquanto ativo, o sensor é ignorado. Ao voltar ao automático, feche a cancela.</td></tr>
+      <tr><td>Funções demoradas (música, leitura do DHT11, medir o pot) param o loop principal.</td><td>Músicas curtas. DHT11 só a cada 30 s e fora de abrir ou fechar a cancela. Medir o pot só no modo manual.</td></tr>
+      <tr><td><code>input()</code> ou arquivo em pasta relativa dentro do serviço (que não tem teclado).</td><td>A calibração do pot é feita à mão antes (<code>python3 manual.py</code>) e o arquivo fica ao lado do módulo. Sem ele, <code>posicao_pot()</code> devolve <code>None</code>.</td></tr>
+      <tr><td>Os servos tremem quando LED e buzzer usam PWM junto no mesmo programa.</td><td>Ligue o pigpio para todas as peças de uma vez, em <code>pinos.py</code> (as 3 linhas comentadas lá).</td></tr>
+      <tr><td>Hora errada no Raspberry (sem internet): o gráfico da semana sai errado.</td><td>Confira com <code>date</code> e ajuste o fuso e a hora (veja a tarefa 7).</td></tr>
+      <tr><td>Ao ligar o Pi, o LED pode acender por um instante e o buzzer apitar baixinho.</td><td>É o estado dos pinos antes do programa começar. É normal.</td></tr>
+    </tbody></table></div>
+</section>
+
+<div class="faixa-sec fs-tarefa"><span class="fs-rot">Sua tarefa</span><span class="fs-txt">Cada pessoa lê só a ficha dela.</span></div>
+
+<section id="tarefas">
+  <div class="cabeca">
+    <h2>Fichas das tarefas</h2>
+    <p>Cada ficha segue a mesma ordem: entenda, veja a ligação, rode o código, cumpra a missão, entregue.</p>
+  </div>
+
+  <div class="abas" role="tablist" aria-label="Escolha a sua tarefa">
+    <button class="aba k1" role="tab" data-tab="1" aria-controls="tarefa-1" type="button"><span class="cr">1</span>Cancelas</button>
+    <button class="aba k2" role="tab" data-tab="2" aria-controls="tarefa-2" type="button"><span class="cr">2</span>Presença</button>
+    <button class="aba k3" role="tab" data-tab="3" aria-controls="tarefa-3" type="button"><span class="cr">3</span>Guarita manual</button>
+    <button class="aba k4" role="tab" data-tab="4" aria-controls="tarefa-4" type="button"><span class="cr">4</span>Sinalização</button>
+    <button class="aba k5" role="tab" data-tab="5" aria-controls="tarefa-5" type="button"><span class="cr">5</span>Ambiente</button>
+    <button class="aba k6" role="tab" data-tab="6" aria-controls="tarefa-6" type="button"><span class="cr">6</span>Lógica</button>
+    <button class="aba k7" role="tab" data-tab="7" aria-controls="tarefa-7" type="button"><span class="cr">7</span>Backend</button>
+    <button class="aba k8" role="tab" data-tab="8" aria-controls="tarefa-8" type="button"><span class="cr">8</span>Frontend</button>
+  </div>
+
+  <article class="tarefa k1" id="tarefa-1" data-n="1">
+    <header class="t-cab"><span class="cr">1</span><div><h3>Cancelas</h3><p>Dois servomotores: cancela de entrada (servo 1) e de saída (servo 2).</p></div><a class="btn-placa mini" href="#placa" data-foco="1" title="Abre o mapa da placa e destaca a área e os pinos desta tarefa"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver na placa</span></a><span class="prog" data-prog="1"></span></header>
+    <ul class="tags"><li>PWM</li><li>ângulo do servo</li></ul>
+
+    <div class="intro">
+      <div class="tile">{{PECA_servo}}</div>
+      <div class="txt">
+        <p class="fraseg">O servo gira até o ângulo que você mandar. A cancela é o braço dele. A largura de um pulso, repetido 50 vezes por segundo, define o ângulo.</p>
+        <div class="fig-card"><div class="rolar">{{FIG_servo_pwm}}</div></div>
+      </div>
+    </div>
+
+<details class="porque"><summary><span class="q">?</span><span>Como o servo funciona por dentro <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Pulso</b>: um sinal que liga por um instante e desliga, como um toque rápido numa campainha.</li><li><b>Realimentação</b>: olhar o resultado e corrigir, como girar o registro do chuveiro até a água ficar morna.</li><li><b>Corrente</b>: a quantidade de eletricidade passando. Mede-se em ampères (A). 1 mA é um milésimo de ampère.</li></ul></div><h4>Em palavras simples</h4><p>O servo é um motorzinho que sabe onde está. Você pede um ângulo, ele gira até chegar e para. Pense no chuveiro: você mexe no registro, sente a temperatura e corrige até ficar certo. O servo faz isso sozinho, muitas vezes por segundo.</p><h4>O que acontece, passo a passo</h4><ol><li>O Raspberry manda 50 pulsos por segundo no fio laranja. A <b>largura</b> de cada pulso é o pedido: pulso curto, ângulo pequeno; pulso longo, ângulo grande.</li><li>Uma plaquinha dentro do servo lê esse pedido.</li><li>Presa ao eixo existe uma peça (um potenciômetro, que você vai conhecer na tarefa 3) que informa o ângulo em que o eixo está de verdade.</li><li>A plaquinha compara o pedido com o ângulo real. Se são diferentes, liga o motor para o lado certo.</li><li>Quando ficam iguais, desliga o motor e segura a posição.</li></ol><div class="rolar">{{FIG_servo_malha}}</div><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Largura vira ângulo.</b> No nosso código, 0,5 ms é 0°, 1,5 ms é 90° e 2,5 ms é 180° (1 ms é um milésimo de segundo). São 2 ms para 180°, cerca de <b>11 µs por grau</b> (1 µs é um milionésimo de segundo).</li><li><b>Engrenagens.</b> Trocam velocidade por força: o motor gira rápido e fraco, e o eixo gira devagar e forte. É por isso que o servo consegue levantar uma cancela.</li><li><b>Por que treme.</b> No Raspberry o pulso é gerado por software, e o sistema operacional atrasa alguns microssegundos de vez em quando. 30 µs de atraso são quase 3°. O pigpio gera o pulso por hardware, sem esse atraso.</li><li><b>Por que o Pi reinicia.</b> Parado, o servo gasta pouca corrente. Ao partir ou ao ser forçado, o motor puxa algumas centenas de mA (o SG90 chega perto de 650 mA travado). A fonte de 5 V do Pi cai e ele reinicia. Uma fonte externa resolve.</li></ul></details></div></details>
+
+    <div class="bloco">
+      <h4>Ligação e lugar na placa</h4>
+      <div class="lig-grid">
+        <div class="rolar">{{LIG_1}}</div>
+        <div class="zooms"><figure>{{ZOOM_1}}<figcaption>J2 (servo 1) e J3 (servo 2). Furos L31–N31 e L33–N33.</figcaption></figure></div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h4>Código de partida</h4>
+      {{CODE:t1_cancelas.py|teste_servo.py}}
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="1-0"><span>A cancela fecha em 0° e abre em 90°. Ajuste para o ângulo real.</span></label></li>
+        <li><label><input type="checkbox" data-k="1-1"><span>Mova devagar: 5° por vez, com <code>sleep(0.02)</code>.</span></label></li>
+        <li><label><input type="checkbox" data-k="1-2"><span>Crie o <code>cancelas.py</code> com as funções ao lado.</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>cancelas.py</code></b>
+<div class="fn"><code>abrir(qual)</code><span>põe a cancela a 90°</span></div><div class="fn"><code>fechar(qual)</code><span>põe a cancela a 0°</span></div><div class="fn"><code>angulo(qual, graus)</code><span>vai para o ângulo pedido, de 0 a 180</span></div><div class="fn"><code>soltar()</code><span>solta os servos (param de tremer)</span></div><p class="liga">“qual” é <code>"entrada"</code> ou <code>"saida"</code>.</p>
+        <p class="liga">Quem usa: <a href="#tarefa-6">6 Lógica</a>, <a href="#tarefa-3">3 Guarita</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li><b>Servo tremendo?</b> Use o pigpio: <code>sudo apt install pigpio python3-pigpio</code>, <code>sudo systemctl enable --now pigpiod</code> e, no código, <code>Device.pin_factory = PiGPIOFactory()</code>.</li>
+        <li><b>Pi reinicia quando o servo mexe?</b> Jumper JP1 em EXT e fonte no J7.</li>
+        <li><b>Só o <code>cancelas.py</code> cria os servos.</b> Nenhum outro módulo pode criar <code>AngularServo(13)</code> ou <code>(26)</code>: dois donos da mesma peça dão erro. Guarde o ângulo aberto e o fechado de cada cancela separadamente, porque a montagem pode ser espelhada.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="tarefa k2" id="tarefa-2" data-n="2">
+    <header class="t-cab"><span class="cr">2</span><div><h3>Presença</h3><p>Sensor ultrassônico HC-SR04: tem um carro na frente da cancela?</p></div><a class="btn-placa mini" href="#placa" data-foco="2" title="Abre o mapa da placa e destaca a área e os pinos desta tarefa"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver na placa</span></a><span class="prog" data-prog="2"></span></header>
+    <ul class="tags"><li>medir distância pelo eco</li><li>divisor de tensão</li></ul>
+
+    <div class="intro">
+      <div class="tile">{{PECA_hcsr04}}</div>
+      <div class="txt">
+        <p class="fraseg">O sensor solta um som que a gente não ouve, espera o eco voltar e o tempo vira distância.</p>
+        <div class="fig-card"><div class="rolar">{{FIG_ultrassom}}</div></div>
+      </div>
+    </div>
+
+<details class="porque"><summary><span class="q">?</span><span>Como o ultrassom mede distância <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Eco</b>: o som que bate num obstáculo e volta, como quando você grita numa montanha.</li><li><b>Ultrassom</b>: um som agudo demais para a gente ouvir. Morcegos e golfinhos usam o mesmo truque.</li><li><b>Tensão</b>: a “força” que empurra a eletricidade, como a pressão da água num cano. Mede-se em volts (V).</li></ul></div><h4>Em palavras simples</h4><p>O sensor funciona como um morcego. Ele “grita” num som que não ouvimos, espera o eco voltar e mede quanto tempo demorou. Quanto mais longe o carro, mais demora o eco. Como a velocidade do som é conhecida, o tempo vira distância. É como gritar numa montanha e contar os segundos até ouvir a resposta.</p><h4>O que acontece, passo a passo</h4><ol><li>O Raspberry manda um pulso curtinho no pino <b>TRIG</b>: é o “pode falar”.</li><li>O sensor solta uma rajada de som agudo.</li><li>O som bate no carro e volta.</li><li>Quando o eco chega, o sensor levanta o pino <b>ECHO</b> e o mantém levantado durante toda a viagem do som.</li><li>O Raspberry cronometra por quanto tempo o ECHO ficou levantado. Esse tempo é a ida e a volta.</li><li>Distância = tempo × velocidade do som ÷ 2. Dividimos por 2 porque o som foi e voltou.</li></ol><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Os dois “olhos”.</b> São discos de cerâmica piezoelétrica: um material que vibra quando recebe eletricidade e gera eletricidade quando vibra. Um disco emite (uma rajada de 8 pulsos de 40 kHz, ou seja, 40 mil vibrações por segundo) e o outro escuta. O chip do módulo amplifica o eco, que é minúsculo.</li><li><b>Velocidade do som.</b> No ar, cerca de 343 m/s a 20 °C (<code>v ≈ 331 + 0,6 × temperatura em °C</code>). Uma diferença de 10 °C muda a distância medida em uns 1,7%, ou menos de 0,1 cm a 5 cm.</li><li><b>Por que falha.</b> Tecido e esponja absorvem o som. Superfícies inclinadas mandam o eco para o lado e ele não volta. O cone útil do sensor é de uns 15°, e objetos muito finos (menores que uns 9 mm) quase não refletem.</li><li><b>Por que o divisor de tensão.</b> O ECHO sai com 5 V e o pino do Raspberry aguenta no máximo 3,3 V. Dois resistores iguais em série dividem a tensão ao meio, como dois trechos de cano que repartem a pressão: <code>5 × 330 ÷ (330 + 330) = 2,5 V</code>.</li></ul></details></div></details>
+
+    <div class="figs dois lig-e">
+      <div class="bloco">
+        <h4>Ligação</h4>
+        <div class="rolar">{{LIG_2}}</div>
+        <div class="fig-card"><h4>Por que a placa tem o divisor R3 e R4</h4><div class="rolar">{{FIG_divisor_echo}}</div></div>
+      </div>
+      <div class="bloco">
+        <h4>Lugar na placa</h4>
+        <figure>{{ZOOM_2}}<figcaption>J4 recebe o sensor (furos J11–M11). R3 e R4 fazem o divisor.</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h4>Código de partida</h4>
+      {{CODE:t2_presenca.py|teste_distancia.py}}
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="2-0"><span>Confira com uma régua a 3, 5 e 10 cm. O erro deve ser menor que 1 cm.</span></label></li>
+        <li><label><input type="checkbox" data-k="2-1"><span>Use a mediana de 5 leituras para tirar os picos falsos.</span></label></li>
+        <li><label><input type="checkbox" data-k="2-2"><span>“Carro presente” = abaixo de 5 cm por 1 segundo seguido.</span></label></li>
+        <li><label><input type="checkbox" data-k="2-3"><span>Crie o <code>presenca.py</code>.</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>presenca.py</code></b>
+<div class="fn"><code>distancia_cm()</code><span>a distância agora, em cm</span></div><div class="fn"><code>carro_presente()</code><span>True se ficou abaixo de 5 cm por 1 s seguido</span></div>
+        <p class="liga">Quem usa: <a href="#tarefa-6">6 Lógica</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li><b>Nunca</b> ligue o ECHO direto no GPIO. Sem o divisor o pino queima.</li>
+        <li>Os scripts antigos tinham TRIG e ECHO trocados. Aqui é <code>echo=24, trigger=23</code>.</li>
+        <li>Tecido e esponja não devolvem o eco. Teste com uma caixa de papelão.</li>
+        <li>O HC-SR04 não mede bem abaixo de uns 2 cm. Com o limite em 5 cm, deixe o carrinho parar entre 2 e 5 cm do sensor.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="tarefa k3" id="tarefa-3" data-n="3">
+    <header class="t-cab"><span class="cr">3</span><div><h3>Guarita manual</h3><p>Potenciômetro e botão: o porteiro controla a cancela de entrada na mão.</p></div><a class="btn-placa mini" href="#placa" data-foco="3" title="Abre o mapa da placa e destaca a área e os pinos desta tarefa"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver na placa</span></a><span class="prog" data-prog="3"></span></header>
+    <ul class="tags"><li>ler “analógico” com capacitor</li><li>botão com pull-up</li></ul>
+
+    <div class="intro">
+      <div class="tile">{{PECA_pot}}{{PECA_botao}}</div>
+      <div class="txt">
+        <p class="fraseg">O <b>potenciômetro</b> define a <b>posição</b> da cancela (0 a 100 vira 0° a 90°). O <b>botão</b> abre ou fecha de uma vez.</p>
+        <div class="fig-card"><h4>Como o potenciômetro é lido (o Pi não tem entrada analógica)</h4><div class="figs dois peq"><figure><div class="rolar">{{FIG_rc_circuito}}</div><figcaption><b>1. O circuito.</b> O ponto <b>X</b> é onde se encontram R2, C1, o cursor (2) e a ponta 3. O GPIO12 carrega o capacitor por R2. O GPIO25 lê o resultado por R1 e pela ponta 1 do potenciômetro.</figcaption></figure><figure><div class="rolar">{{FIG_rc_curva}}</div><figcaption><b>2. O que o código mede.</b> O capacitor carrega aos poucos. O código cronometra quanto tempo a tensão leva para passar do limiar. Girar o potenciômetro muda esse tempo, e o tempo vira a posição de 0 a 100.</figcaption></figure></div></div>
+      </div>
+    </div>
+
+<details class="porque"><summary><span class="q">?</span><span>Como o potenciômetro e o botão funcionam por dentro <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Resistência</b>: o quanto um caminho dificulta a passagem da eletricidade, como um cano estreito. Mede-se em ohms (Ω); kΩ é mil ohms.</li><li><b>Capacitor</b>: um pequeno “balde” que enche de eletricidade. Quanto mais estreita a torneira, mais devagar enche.</li><li><b>Entrada digital</b>: um pino que só entende dois valores: 1 (ligado) ou 0 (desligado).</li><li><b>Pull-up</b>: um resistor que “puxa” o pino para 1 quando nada está ligado a ele.</li></ul></div><h4>Em palavras simples</h4><p>O <b>potenciômetro</b> é como o botão de volume do rádio: girando, você muda a dificuldade que a eletricidade encontra. O problema é que o Raspberry só entende ligado ou desligado, e não sabe medir isso direto. O truque é medir o <b>tempo</b> que o “balde” (o capacitor) demora para encher. Torneira bem aberta enche rápido, quase fechada demora: o tempo mostra a posição do botão.</p><h4>O que acontece, passo a passo</h4><ol><li>O código esvazia o capacitor (descarrega).</li><li>O Raspberry liga o pino GPIO12 e começa o cronômetro. A eletricidade começa a encher o capacitor pelo resistor R2.</li><li>O pino GPIO25 fica “olhando” a tensão. Quando ela passa de certo nível, ele passa a ler 1.</li><li>O código para o cronômetro. Esse tempo depende da posição do potenciômetro.</li><li>Na calibração você mostra os dois extremos (mínimo e máximo). Depois o código converte qualquer tempo em um número de 0 a 100.</li></ol><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Por dentro do potenciômetro.</b> É uma trilha resistiva de 10 kΩ com um contato que desliza, o cursor. Entre as pontas a resistência é sempre 10 kΩ. Entre o cursor e uma ponta ela vai de 0 a 10 kΩ, conforme o ângulo.</li><li><b>O capacitor enchendo.</b> A tensão sobe assim: <code>V(t) = Vfonte × (1 − e^(−t ÷ RC))</code>. Aqui <code>R × C = 10 kΩ × 100 nF = 1 ms</code>: em 1 ms o capacitor chega a 63% da tensão final.</li><li><b>Do tempo à posição.</b> Os pinos do Pi decidem 1 quando a tensão passa de mais ou menos a metade de 3,3 V. Nesse limiar, <code>t ≈ 0,69 × R × C</code>. A posição do pot muda a resistência do caminho (e quanto da tensão chega ao pino de leitura, junto com um resistor interno de pull-down de dezenas de kΩ), então muda o tempo. Por isso é preciso calibrar: as peças reais variam de 5 a 20% do valor marcado.</li><li><b>Botão e pull-up.</b> Uma entrada solta “flutua”: capta ruído e lê 0 e 1 ao acaso, como uma antena. O pull-up liga o pino a 3,3 V, então ele lê 1. Ao apertar, o botão liga o pino ao GND (zero). Como o resistor é grande, o GND vence e a entrada lê 0.</li><li><b>Bounce.</b> Os contatos metálicos quicam por alguns milésimos de segundo ao fechar e geram várias leituras seguidas. O <i>debounce</i> ignora as repetições (por exemplo, <code>bounce_time=0.05</code>).</li></ul></details></div></details>
+
+    <div class="figs dois lig-d">
+      <div class="fig-card"><h4>Como o botão é lido</h4><div class="rolar">{{FIG_botao_pullup}}</div></div>
+      <div class="bloco">
+        <h4>Ligação</h4>
+        <div class="rolar">{{LIG_3}}</div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h4>Lugar na placa</h4>
+      <div class="zooms dois-z"><figure>{{ZOOM_3A}}<figcaption>Potenciômetro RV1, R1, R2 e C1.</figcaption></figure><figure>{{ZOOM_3B}}<figcaption>Botão SW1 e J8 (botão externo).</figcaption></figure></div>
+    </div>
+
+    <div class="figs dois">
+      <div class="bloco">
+        <h4>Código de partida: botão</h4>
+        {{CODE:t3_botao.py|teste_botao.py}}
+        <p class="liga">Para o potenciômetro, rode o que já existe: <code>python3 ../calibracao_pot2.py</code>.</p>
+      </div>
+      <div class="bloco">
+        <h4>Próximo passo: guardar a calibração</h4>
+        {{CODE:t3_pot.py|manual.py (pot)}}
+      </div>
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="3-0"><span>Rode o <code>calibracao_pot2.py</code> e veja a posição ir de 0 a 100.</span></label></li>
+        <li><label><input type="checkbox" data-k="3-1"><span>Salve o mínimo e o máximo em arquivo, para não recalibrar toda vez.</span></label></li>
+        <li><label><input type="checkbox" data-k="3-2"><span>Leia o botão com <code>when_pressed</code>.</span></label></li>
+        <li><label><input type="checkbox" data-k="3-3"><span>Crie o <code>manual.py</code>. Ele só <b>devolve</b> a posição e o botão: quem move a cancela é o <code>main.py</code>, com <code>cancelas.angulo()</code>. Teste a cancela seguindo o pot num script à parte.</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>manual.py</code></b>
+<div class="fn"><code>posicao_pot()</code><span>0 a 100, ou None se a leitura falhou</span></div><div class="fn"><code>botao_pressionado()</code><span>True enquanto o botão está apertado</span></div><div class="fn"><code>on_botao(funcao)</code><span>chama a função a cada aperto (só marque uma flag nela)</span></div>
+        <p class="liga">Quem usa: <a href="#tarefa-6">6 Lógica</a>, com <a href="#tarefa-1">1 Cancelas</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li>A leitura oscila. Mantenha o filtro (<code>ALPHA</code>) e a zona morta do <code>calibracao_pot2.py</code>.</li>
+        <li><b>Não crie o servo aqui.</b> Se o <code>manual.py</code> criar <code>AngularServo(13)</code>, o <code>cancelas.py</code> já é o dono e dá erro quando o <code>main.py</code> importar os dois.</li>
+        <li><b>Callback do botão roda em outra linha de execução.</b> Dentro dele, só marque uma flag (<code>apertou = True</code>). Quem mexe na cancela é o loop do <code>main.py</code>.</li>
+        <li><b>O serviço não tem teclado.</b> A calibração (que usa <code>input()</code>) é feita à mão antes. Sem o arquivo, <code>posicao_pot()</code> devolve <code>None</code>.</li>
+        <li>O pot usa <code>RPi.GPIO</code> e o exemplo do botão usa <code>gpiozero</code>. Se der conflito, leia o botão com <code>GPIO.input(5)</code>, como o <code>rgb_pwm_interativo.py</code> faz.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="tarefa k4" id="tarefa-4" data-n="4">
+    <header class="t-cab"><span class="cr">4</span><div><h3>Sinalização</h3><p>LED RGB e buzzer: a cor do estado e a musiquinha da cancela.</p></div><a class="btn-placa mini" href="#placa" data-foco="4" title="Abre o mapa da placa e destaca a área e os pinos desta tarefa"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver na placa</span></a><span class="prog" data-prog="4"></span></header>
+    <ul class="tags"><li>mistura de cores com PWM</li><li>LED de ânodo comum</li><li>notas num buzzer</li></ul>
+
+    <div class="intro">
+      <div class="tile">{{PECA_led}}{{PECA_buzzer}}</div>
+      <div class="txt">
+        <p class="fraseg">O LED mostra o estado do estacionamento e o buzzer toca a musiquinha quando a cancela abre.</p>
+        <div class="estado-cores"><span><i style="background:#2fb344"></i>verde: vaga livre</span><span><i style="background:#f2c200"></i>amarelo: cancela em movimento</span><span><i style="background:#e0302a"></i>vermelho: lotado</span><span><i style="background:#2f6fe0"></i>azul: modo manual</span></div>
+        <div class="fig-card"><h4>LED RGB: por que “nível baixo acende”</h4><div class="rolar">{{FIG_led_anodo}}</div></div>
+      </div>
+    </div>
+
+<details class="porque"><summary><span class="q">?</span><span>Como o LED RGB e o buzzer funcionam por dentro <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>LED</b>: uma lampadinha de estado sólido: acende quando passa eletricidade num sentido só.</li><li><b>Resistor</b>: uma peça que limita a passagem de eletricidade para proteger as outras.</li><li><b>PWM</b>: ligar e desligar muito rápido para controlar a intensidade, como piscar tão depressa que o olho vê só uma luz mais fraca.</li><li><b>Frequência</b>: quantas vezes por segundo algo vibra. Mede-se em hertz (Hz).</li><li><b>Transistor</b>: um interruptor que é fechado por eletricidade em vez de por um dedo.</li></ul></div><h4>Em palavras simples</h4><p>O LED RGB tem três luzinhas dentro de uma só cápsula: vermelha, verde e azul. Misturando as três em intensidades diferentes saem todas as cores, como misturar tintas, só que de luz (o monitor e a TV fazem igual). O buzzer é um alto-falante minúsculo: ao receber um vai-e-vem rápido de eletricidade, a membrana vibra e faz som. Quanto mais rápido vibra, mais agudo é o som.</p><h4>O que acontece, passo a passo</h4><ol><li><b>LED.</b> Cada cor tem seu pino. Nesta placa o LED é ligado ao 3,3 V pelo outro lado, então o pino em <b>0</b> acende e o pino em <b>1</b> apaga (como uma gangorra).</li><li>Para uma cor mais fraca, o pino liga e desliga muito rápido (PWM). O olho não vê o piscar e percebe um brilho médio.</li><li>Vermelho com verde dá amarelo. As três juntas dão branco.</li><li><b>Buzzer.</b> O pino do Raspberry é fraco demais para o buzzer. Ele fecha o interruptor eletrônico (o transistor), e o buzzer recebe energia dos 5 V.</li><li>O código liga e desliga o pino numa frequência. O lá (A4) é 440 vezes por segundo. Cada oitava dobra a frequência (o A5 é 880 Hz).</li></ol><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Por dentro do LED.</b> É uma junção de semicondutores: quando a corrente passa, elétrons e lacunas se recombinam e liberam a energia como luz. A energia define a cor: o vermelho começa a conduzir com uns 2 V, o verde e o azul com uns 3 V.</li><li><b>Por que o resistor.</b> <code>corrente = (3,3 V − queda do LED) ÷ 330 Ω</code>. No vermelho: <code>(3,3 − 2,0) ÷ 330 ≈ 4 mA</code>. No azul e no verde: <code>(3,3 − 3,1) ÷ 330 ≈ 0,6 mA</code>, por isso brilham menos. Sem resistor a corrente não tem limite e o LED queima.</li><li><b>PWM.</b> A proporção do tempo ligado se chama duty cycle. Ligado 50% do tempo parece metade do brilho. Aqui o pino liga e desliga umas 1000 vezes por segundo.</li><li><b>Buzzer passivo e ativo.</b> O passivo é um disco piezoelétrico: toca a nota que você mandar. O ativo tem um oscilador dentro e só toca um tom fixo.</li><li><b>O transistor BC337.</b> Uma corrente pequena na base, <code>(3,3 − 0,7) ÷ 1 kΩ ≈ 2,6 mA</code>, deixa passar uma corrente bem maior entre coletor e emissor (ganho de pelo menos 100, ou seja, até uns 260 mA). Os 0,7 V são a queda entre base e emissor.</li></ul></details></div></details>
+
+    <div class="figs dois lig-d">
+      <div class="fig-card"><h4>Buzzer: o transistor liga o som</h4><div class="rolar">{{FIG_buzzer_circuit}}</div><div class="rolar">{{FIG_notas}}</div></div>
+      <div class="bloco">
+        <h4>Ligação</h4>
+        <div class="rolar">{{LIG_4}}</div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h4>Lugar na placa</h4>
+      <div class="zooms dois-z"><figure>{{ZOOM_4A}}<figcaption>LED RGB D1 e o resistor R5.</figcaption></figure><figure>{{ZOOM_4B}}<figcaption>Buzzer J6, transistor Q1 e resistor R6.</figcaption></figure></div>
+    </div>
+
+    <div class="bloco">
+      <h4>Código de partida</h4>
+      {{CODE:t4_sinais.py|teste_sinais.py}}
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="4-0"><span>Acenda vermelho, verde, azul, amarelo e branco (o branco do <code>rgb_pwm_interativo.py</code> usa 80, 100, 100).</span></label></li>
+        <li><label><input type="checkbox" data-k="4-1"><span>Crie 3 músicas: <code>abrindo</code> (curta e alegre), <code>lotado</code> (2 bips graves) e <code>alerta</code>.</span></label></li>
+        <li><label><input type="checkbox" data-k="4-2"><span>Faça as cores de estado do quadro acima.</span></label></li>
+        <li><label><input type="checkbox" data-k="4-3"><span>Crie o <code>sinais.py</code>.</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>sinais.py</code></b>
+<div class="fn"><code>cor(nome)</code><span>acende "verde", "amarelo", "vermelho", "azul" ou "apagado"</span></div><div class="fn"><code>musica(nome)</code><span>toca "abrindo", "lotado" ou "alerta"</span></div><div class="fn"><code>bip()</code><span>um bip curto</span></div>
+        <p class="liga">Quem usa: <a href="#tarefa-6">6 Lógica</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li>Verde e azul brilham menos que o vermelho (o LED usa 3,3 V). É esperado.</li>
+        <li><b>Toca um bip fixo, qualquer nota?</b> O buzzer é ativo. Use <code>Buzzer(6).on()</code> e <code>.off()</code> e faça os sinais só com bips curtos e longos.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="tarefa k5" id="tarefa-5" data-n="5">
+    <header class="t-cab"><span class="cr">5</span><div><h3>Ambiente</h3><p>Sensor DHT11: temperatura e umidade do pátio.</p></div><a class="btn-placa mini" href="#placa" data-foco="5" title="Abre o mapa da placa e destaca a área e os pinos desta tarefa"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver na placa</span></a><span class="prog" data-prog="5"></span></header>
+    <ul class="tags"><li>sensor digital de 1 fio</li><li>instalar biblioteca</li><li>tratar falhas</li></ul>
+
+    <div class="intro">
+      <div class="tile">{{PECA_dht11}}</div>
+      <div class="txt">
+        <p class="fraseg">O DHT11 manda temperatura e umidade por um único fio. Cada leitura leva cerca de 1 segundo.</p>
+        <div class="fig-card"><div class="rolar">{{FIG_dht_fluxo}}</div></div>
+      </div>
+    </div>
+
+<details class="porque"><summary><span class="q">?</span><span>Como o DHT11 mede e conversa <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Sensor digital</b>: um sensor que já entrega o resultado em números, não em tensão.</li><li><b>Bit</b>: a menor informação do computador: 0 ou 1.</li><li><b>Termistor</b>: um resistor cuja resistência muda com a temperatura.</li></ul></div><h4>Em palavras simples</h4><p>O DHT11 é um termômetro e um medidor de umidade dentro de uma caixinha, junto com um minicérebro. Ele mede sozinho e “conversa” com o Raspberry por um único fio, mandando os dois números. É como um colega que mede e te avisa o resultado batendo pancadinhas curtas e longas, um código combinado entre vocês.</p><h4>O que acontece, passo a passo</h4><ol><li>O Raspberry “bate na porta”: puxa o fio para baixo por uns 18 ms. É o pedido de medição.</li><li>O sensor responde e manda <b>40 bits</b>, um de cada vez.</li><li>Cada bit é um pulso: curtinho (uns 27 µs) é 0, mais comprido (uns 70 µs) é 1.</li><li>Os 40 bits formam 5 números: a umidade (2), a temperatura (2) e uma soma de conferência.</li><li>O Raspberry confere a soma. Se não fecha, ele descarta a leitura e a biblioteca avisa com um erro (<code>RuntimeError</code>). Por isso a gente tenta de novo.</li></ol><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Temperatura.</b> Um termistor do tipo NTC: a resistência cai quando esquenta. O chip mede a resistência e converte em °C.</li><li><b>Umidade.</b> Um polímero que absorve vapor de água. Quanto mais água, menor a resistência elétrica entre dois eletrodos. O chip converte em % de umidade relativa.</li><li><b>Por que o Pi erra.</b> O Linux não é um sistema de tempo real e pode atrasar a leitura alguns microssegundos, o que estraga um pulso de 27 µs. A soma de conferência não fecha e vem o erro.</li><li><b>Por que 2 segundos.</b> O DHT11 é lento: precisa de cerca de 1 s por medição. Ler mais rápido só repete erros.</li></ul></details></div></details>
+
+    <div class="figs dois lig-e">
+      <div class="bloco">
+        <h4>Ligação</h4>
+        <div class="rolar">{{LIG_5}}</div>
+        <div class="erro"><b>Confira a ordem antes de encaixar.</b> A placa espera 3V3, DAT, GND (de cima para baixo). Alguns módulos vêm GND, DATA, VCC. Leia a serigrafia do seu. Ao contrário, queima.</div>
+      </div>
+      <div class="bloco">
+        <h4>Lugar na placa</h4>
+        <figure>{{ZOOM_5}}<figcaption>J5 recebe o módulo. Furos F24–H24.</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h4>Instale a biblioteca (uma vez)</h4>
+      <div class="cmd"><code>sudo apt install -y python3-pip libgpiod2 &amp;&amp; pip3 install adafruit-circuitpython-dht</code><button class="copiar" type="button" data-copiar="sudo apt install -y python3-pip libgpiod2 && pip3 install adafruit-circuitpython-dht">Copiar</button></div>
+      <p class="liga">O pip respondeu “externally-managed-environment”? Crie um ambiente: <code>python3 -m venv --system-site-packages ~/venv &amp;&amp; source ~/venv/bin/activate</code> e rode o pip de novo.</p>
+    </div>
+
+    <div class="bloco">
+      <h4>Código de partida</h4>
+      {{CODE:t5_ambiente.py|teste_dht11.py}}
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="5-0"><span>Rode o código e veja temperatura e umidade na tela.</span></label></li>
+        <li><label><input type="checkbox" data-k="5-1"><span>Sopre perto do sensor: a umidade precisa subir.</span></label></li>
+        <li><label><input type="checkbox" data-k="5-2"><span>Crie o <code>ambiente.py</code>, que devolve a leitura ou <code>None</code>.</span></label></li>
+        <li><label><input type="checkbox" data-k="5-3"><span>Escreva um script de teste que manda uma leitura para <code>POST /api/ambiente</code> (a tarefa 6 repete isso a cada 30 s).</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>ambiente.py</code></b>
+<div class="fn"><code>ler()</code><span>devolve (temperatura em °C, umidade em %), ou None se a leitura falhar</span></div>
+        <p class="liga">Quem usa: <a href="#tarefa-6">6 Lógica</a>, <a href="#tarefa-7">7 Backend</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li><b>RuntimeError de vez em quando é normal.</b> Por isso o <code>try/except</code> e a nova tentativa.</li>
+        <li>Não leia mais rápido que a cada 2 segundos.</li>
+        <li><b>Apareceu “Unable to set line 22 to input”?</b> Um processo auxiliar da biblioteca ficou preso. Rode <code>pkill libgpiod_pulsein</code> e, no código, chame <code>dht.exit()</code> ao encerrar.</li>
+        <li>Uma leitura pode levar alguns segundos com as tentativas. No <code>main.py</code>, leia só a cada 30 s e nunca no meio de abrir ou fechar a cancela.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="tarefa k6" id="tarefa-6" data-n="6">
+    <header class="t-cab"><span class="cr">6</span><div><h3>Lógica</h3><p>O <code>main.py</code> liga tudo: decide quando abrir, avisar e contar.</p></div><a class="btn-placa mini" href="#placa" data-foco="0" title="Abre o mapa da placa com os pinos de todas as peças"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver os pinos na placa</span></a><span class="prog" data-prog="6"></span></header>
+    <ul class="tags"><li>máquina de estados</li><li>juntar módulos dos outros</li><li>chamar uma API</li></ul>
+
+    <div class="intro">
+      <div class="mini-tile">{{ICONE_logica}}</div>
+      <div class="txt">
+        <p class="fraseg">Comece sem hardware: crie <code>cancelas.py</code>, <code>presenca.py</code> e <code>sinais.py</code> falsos, que só fazem <code>print</code>. O <code>main.py</code> já roda com eles. A cada módulo real que chegar, apague o falso.</p>
+        <div class="regras-c">
+          <div><b>Entrada</b>Carro 1 s à frente e há vaga: abre. Fecha 2 s depois que o carro passou. Conta uma entrada.</div>
+          <div><b>Lotado</b>Dentro ≥ vagas (6): não abre. LED vermelho e 2 bips.</div>
+          <div><b>Saída</b>Porteiro clica “Liberar saída” no painel: servo 2 abre, espera 2 s, fecha, conta uma saída.</div>
+          <div><b>Manual</b>Pot ou botão mexeu: a guarita manda no servo 1, LED azul, e o sensor é ignorado. Volta ao automático após 10 s parado (feche a cancela ao voltar).</div>
+        </div>
+      </div>
+    </div>
+
+    <details class="porque"><summary><span class="q">?</span><span>Como pensar a lógica do sistema <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Estado</b>: a situação em que o sistema está agora: livre, abrindo, lotado...</li><li><b>Loop</b>: um trecho do programa que se repete para sempre.</li><li><b>Polling</b>: perguntar de tempos em tempos “mudou alguma coisa?”.</li></ul></div><h4>Em palavras simples</h4><p>A lógica é o “porteiro automático”: um conjunto de regras do tipo “se isso, então aquilo”. Pense num semáforo, que passa por verde, amarelo e vermelho, e em cada fase decide o que fazer. O programa lembra em que estado está e, a cada volta, olha os sensores para decidir o próximo passo.</p><h4>O que acontece, passo a passo</h4><ol><li>A cada volta do loop, o programa olha o sensor: tem carro?</li><li>Se o carro ficou 1 segundo na frente, o programa pergunta ao servidor se ainda há vaga.</li><li>Com vaga: acende o LED amarelo, toca a música e abre a cancela.</li><li>Espera o carro passar, depois mais 2 segundos, e fecha a cancela. Avisa o servidor: “entrou um carro”.</li><li>Volta ao começo e fica esperando o próximo.</li></ol><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>A pausa do loop.</b> O <code>sleep(0.2)</code> faz o sistema olhar 5 vezes por segundo. Mais rápido gasta o processador à toa. Mais devagar pode perder um carro rápido.</li><li><b>Confirmar pelo tempo.</b> Exigir 1 s de presença evita falsos avisos (ruído do sensor, um inseto na frente). É a mesma ideia do debounce do botão.</li><li><b>Polling.</b> O <code>main.py</code> pergunta ao servidor “tem comando?” a cada volta. É simples e suficiente aqui. Em sistemas maiores o servidor “empurra” o aviso, o que se chama WebSocket.</li></ul></details></div></details>
+
+    <div class="bloco"><h4>Estados</h4><div class="fig-card"><div class="rolar">{{SVG_ESTADOS}}</div></div></div>
+
+    <div class="bloco"><h4>Quem fala com quem</h4>
+      <div class="figs">
+        <div class="fig-card"><h4>Um carro entra</h4><div class="rolar">{{FIG_sequencia}}</div></div>
+        <div class="fig-card"><h4>Um carro sai</h4><div class="rolar">{{FIG_sequencia_saida}}</div></div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h4>Código de partida</h4>
+      {{CODE:t6_main.py|main.py}}
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="6-0"><span>Mostre os estados desenhados ao time.</span></label></li>
+        <li><label><input type="checkbox" data-k="6-1"><span>Rode o <code>main.py</code> com módulos falsos.</span></label></li>
+        <li><label><input type="checkbox" data-k="6-2"><span>Troque cada falso pelo real conforme as tarefas 1 a 5 entregarem.</span></label></li>
+        <li><label><input type="checkbox" data-k="6-3"><span>Implemente o modo manual e o lotado.</span></label></li>
+        <li><label><input type="checkbox" data-k="6-4"><span>Se o servidor cair, o Python continua abrindo a cancela.</span></label></li>
+        <li><label><input type="checkbox" data-k="6-5"><span>A cada 30 s, leia <code>ambiente.ler()</code> e mande <code>POST /api/ambiente</code>.</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>main.py</code></b>
+<div class="fn"><code>roda sozinho</code><span>abre e fecha as cancelas, sinaliza, manda entradas, saídas e o ambiente ao servidor</span></div>
+        <p class="liga">Usa: <a href="#tarefa-1">1</a>, <a href="#tarefa-2">2</a>, <a href="#tarefa-3">3</a>, <a href="#tarefa-4">4</a>, <a href="#tarefa-5">5</a> e <a href="#tarefa-7">7</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li>Falta a biblioteca? <code>sudo apt install python3-requests</code>.</li>
+        <li><b>Os módulos só têm funções.</b> Um <code>while True</code> solto num módulo trava o <code>main.py</code> na hora do <code>import</code>. Teste dentro de <code>if __name__ == "__main__":</code>.</li>
+        <li>Músicas e esperas param o loop. Mantenha as músicas curtas. Durante uma entrada, o painel e o manual esperam: é aceitável no protótipo.</li>
+        <li>Feche o <a href="#contrato">contrato da API</a> com a tarefa 7 no primeiro dia.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="tarefa k7" id="tarefa-7" data-n="7">
+    <header class="t-cab"><span class="cr">7</span><div><h3>Backend</h3><p>Node.js com Express e SQLite: guarda entradas e saídas e conta a semana.</p></div><span class="prog" data-prog="7"></span></header>
+    <ul class="tags"><li>API HTTP</li><li>SQLite</li><li>testar com curl</li></ul>
+
+    <div class="intro">
+      <div class="mini-tile">{{ICONE_banco}}</div>
+      <div class="txt">
+        <p class="fraseg">Recebe do Python cada entrada e saída, grava com data e hora e responde à página quantos entraram, saíram e estão dentro. Comece no seu PC: o Node roda no Windows.</p>
+        <div class="fig-card"><h4>As tabelas do banco</h4><div class="rolar">{{FIG_banco}}</div></div>
+      </div>
+    </div>
+
+<details class="porque"><summary><span class="q">?</span><span>Como funcionam o servidor e o banco <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Servidor</b>: um programa que fica esperando pedidos pela rede e responde.</li><li><b>API</b>: a lista de pedidos que o servidor entende, como o cardápio de um restaurante.</li><li><b>Banco de dados</b>: um arquivo organizado em tabelas onde os dados ficam guardados.</li><li><b>JSON</b>: um jeito simples de escrever dados em texto, como {"tipo": "entrada"}.</li></ul></div><h4>Em palavras simples</h4><p>O servidor é um atendente com um caderno. O Python chega e diz “entrou um carro”. O atendente anota no caderno, com data e hora. Depois o painel pergunta “quantos carros tem?”. O atendente conta as anotações e responde. O caderno é o banco de dados: guarda tudo, mesmo se o Raspberry for desligado.</p><h4>O que acontece, passo a passo</h4><ol><li>O Python faz um pedido <code>POST /api/eventos</code> com <code>{"tipo": "entrada"}</code>.</li><li>O Node confere se o pedido está certo e escreve uma linha nova no banco, com a hora.</li><li>O painel faz um pedido <code>GET /api/resumo</code>.</li><li>O Node conta as linhas (entradas e saídas) e responde com um pacotinho de dados em JSON.</li><li>O painel mostra os números na tela.</li></ol><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>HTTP.</b> O cliente manda um pedido (método, caminho e corpo) e o servidor devolve uma resposta (código e corpo). <code>GET</code> lê e <code>POST</code> cria. Códigos: 201 é “criado”, 400 é “pedido inválido”, 204 é “sem conteúdo”.</li><li><b>Express.</b> Liga cada par (método, caminho) a uma função. <code>app.post('/api/eventos', ...)</code> diz “quando chegar um POST nesse caminho, rode isto”.</li><li><b>SQLite.</b> Um banco que vive em um único arquivo, sem servidor separado. Ele grava em transações: se a energia cair no meio de uma gravação, o arquivo não fica corrompido.</li><li><b>Por que guardar cada evento.</b> Com a hora de cada um dá para contar por dia, por semana ou por qualquer período, sem perder o histórico.</li></ul></details></div></details>
+
+    <div class="bloco">
+      <h4>Código de partida (já testado: grava, conta e serve a página)</h4>
+      {{CODE:t7_server.js|server.js}}
+    </div>
+
+    <div class="bloco">
+      <h4>Teste sem o Python</h4>
+      <pre class="term"><span class="rotulo">PowerShell (use curl.exe; curl sozinho é outro comando)</span><span class="p">PS ...&gt;</span> curl.exe -X POST http://localhost:3000/api/eventos -H "Content-Type: application/json" -d "{\"tipo\":\"entrada\"}"
+<span class="p">PS ...&gt;</span> curl.exe http://localhost:3000/api/resumo
+<span class="c">{"entradas":1,"saidas":0,"dentro":1}</span></pre>
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="7-0"><span>Rode o código de partida e os dois testes acima.</span></label></li>
+        <li><label><input type="checkbox" data-k="7-1"><span>Crie as tabelas <code>ambiente</code> e <code>comandos</code> e os endpoints do <a href="#contrato">contrato</a>.</span></label></li>
+        <li><label><input type="checkbox" data-k="7-2"><span>Some <code>por_dia</code> ao <code>/api/resumo</code>, para o gráfico.</span></label></li>
+        <li><label><input type="checkbox" data-k="7-3"><span>Escreva um <code>seed.js</code> com uma semana de dados de teste.</span></label></li>
+        <li><label><input type="checkbox" data-k="7-4"><span>Recuse (código 409) uma saída quando não há ninguém dentro. O “dentro” nunca fica negativo. O código de partida já faz isso: entenda por quê.</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>server.js</code> e <code>estacionamento.db</code></b>
+        <code>todos os endpoints do contrato</code>
+        <p class="liga">Quem usa: <a href="#tarefa-6">6</a>, <a href="#tarefa-5">5</a> e <a href="#tarefa-8">8</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li><b>npm install falhou compilando?</b> <code>sudo apt install build-essential python3</code> e tente de novo. No Pi, confira com <code>node -v</code>.</li>
+        <li>“Dentro agora” (e as vagas disponíveis, que são <code>vagas</code> − <code>dentro</code>) usa o total de entradas menos o total de saídas, não só a semana.</li>
+        <li>Antes da demo, apague o <code>estacionamento.db</code>.</li>
+        <li><b>Confira a hora do Raspberry.</b> Sem internet ele pode estar com a hora errada, e o gráfico da semana sai errado. Veja com <code>date</code>, ajuste o fuso com <code>sudo timedatectl set-timezone America/Sao_Paulo</code> e, se preciso, a hora com <code>sudo date -s "AAAA-MM-DD HH:MM:SS"</code>.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="tarefa k8" id="tarefa-8" data-n="8">
+    <header class="t-cab"><span class="cr">8</span><div><h3>Frontend</h3><p>A página que o time e o porteiro vão ver.</p></div><span class="prog" data-prog="8"></span></header>
+    <ul class="tags"><li>fetch de uma API</li><li>atualizar a tela sozinha</li><li>gráfico</li></ul>
+
+<details class="porque"><summary><span class="q">?</span><span>O que o navegador faz por baixo <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Navegador</b>: o programa que mostra páginas da internet (Chrome, Edge, Firefox).</li><li><b>JavaScript</b>: a linguagem que roda dentro da página e a faz reagir.</li><li><b>DOM</b>: a “árvore” de elementos da página (títulos, números, botões) que o JavaScript consegue mudar.</li></ul></div><h4>Em palavras simples</h4><p>O painel é a vitrine do sistema: uma página web que mostra os números. Ela não sabe nada sozinha. A cada 2 segundos pergunta ao servidor “quantos carros?”, recebe a resposta e troca os números na tela, sem recarregar a página. É como olhar o placar de um jogo que se atualiza sozinho.</p><h4>O que acontece, passo a passo</h4><ol><li>O navegador pede a página ao servidor Node e mostra.</li><li>O JavaScript da página liga um “despertador” que toca a cada 2 segundos.</li><li>A cada toque, ele pede <code>/api/resumo</code> ao servidor.</li><li>Quando a resposta chega, ele troca o texto dos números e redesenha o gráfico.</li><li>Se o servidor não responde, a página mostra “sem conexão” em vez de travar.</li></ol><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Onde o código roda.</b> O JavaScript da página roda no navegador de quem está olhando, não no Raspberry. O Raspberry só entrega os arquivos e os dados.</li><li><b>fetch e polling.</b> <code>fetch</code> faz o pedido ao servidor. Repetir o pedido de tempos em tempos (polling) é a forma mais simples de manter a tela atualizada.</li><li><b>Gráfico.</b> O Chart.js desenha dentro de um <code>&lt;canvas&gt;</code> a partir de listas de números, no caso as entradas e saídas de cada dia.</li><li><b>Tratar o erro.</b> Rede e servidor falham de vez em quando. Uma página que avisa é melhor que uma tela travada.</li></ul></details></div></details>
+
+    <div class="figs dois">
+      <figure class="fig-card"><div class="rolar">{{SVG_PAINEL}}</div><figcaption>Esboço do painel. Os números são de exemplo.</figcaption></figure>
+      <div class="bloco">
+        <h4>O que cada área pede à API</h4>
+        <ol class="legenda-num k8">
+          <li><span><b>3 contadores</b> (vagas disponíveis agora, entradas e saídas): <code>GET /api/resumo</code> a cada 2 s. Vagas disponíveis = <code>vagas</code> − <code>dentro</code>.</span></li>
+          <li><span><b>Gráfico da semana</b> (Chart.js): o campo <code>por_dia</code> do mesmo resumo.</span></li>
+          <li><span><b>Ambiente</b>: <code>GET /api/ambiente/ultima</code>.</span></li>
+          <li><span><b>Liberar saída</b>: <code>POST /api/comandos</code> com <code>{"alvo":"saida","acao":"abrir"}</code>.</span></li>
+        </ol>
+        <p class="liga">Comece no seu PC, com os dados de teste da tarefa 7 ou com um JSON fixo seu. Salve em <code>public/index.html</code> e abra <code>http://localhost:3000</code>.</p>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h4>Código de partida (<code>public/index.html</code>)</h4>
+      {{CODE:t8_painel.html|public/index.html}}
+    </div>
+
+    <div class="baixo">
+      <div class="bloco"><h4>Missão</h4><ul class="check">
+        <li><label><input type="checkbox" data-k="8-0"><span>Mostre os 3 contadores lendo <code>/api/resumo</code>.</span></label></li>
+        <li><label><input type="checkbox" data-k="8-1"><span>Adicione o gráfico da semana com Chart.js.</span></label></li>
+        <li><label><input type="checkbox" data-k="8-2"><span>Mostre temperatura e umidade.</span></label></li>
+        <li><label><input type="checkbox" data-k="8-3"><span>Faça o botão “Liberar saída” chamar a API.</span></label></li>
+        <li><label><input type="checkbox" data-k="8-4"><span>Abra no celular: a página precisa caber na tela.</span></label></li>
+      </ul></div>
+      <div class="caixa-entrega"><h4>Sua entrega</h4>
+        <b><code>public/index.html</code></b>
+        <code>painel lendo a API de verdade</code>
+        <p class="liga">Usa: <a href="#tarefa-7">7 Backend</a>.</p>
+      </div>
+      <div class="bloco"><h4>Cuidado</h4><ul>
+        <li>No Raspberry, abra <code>http://IP-do-Pi:3000</code> (o IP de hoje) ou <code>http://raspberrypi.local:3000</code>.</li>
+        <li>Se a API cair, mostre “sem conexão” em vez de quebrar a tela.</li>
+      </ul></div>
+    </div>
+  </article>
+</section>
+
+<div class="faixa-sec fs-consulta" id="consulta"><span class="fs-rot">Consulta</span><span class="fs-txt">Material de apoio. Não faz parte de nenhuma tarefa: abra só quando precisar.</span></div>
+
+<details class="ref" id="placa"><summary><span class="ref-tx"><span class="ref-t">A placa de interface</span><span class="ref-s">A placa ilhada de 5 × 10 cm encaixa por cima do Raspberry. Cada área colorida é de uma tarefa. O mapa vem do projeto da placa, então as posições são as reais.</span></span></summary><div class="ref-corpo">
+  <div class="foco-aviso" id="foco-aviso" hidden><span>Destacando a área e os pinos da <b id="foco-nome"></b>.</span><button type="button" id="foco-limpar">Mostrar tudo</button></div>
+  <div class="so-largo">
+    <figure class="moldura">{{SVG_PLACA}}<figcaption>Vista de cima. Cinza é de todos: encaixe do Raspberry (J1), seletor de 5 V (JP1), fonte externa (J7) e capacitor C2.</figcaption></figure>
+  </div>
+  <div class="so-estreito">
+    <figure class="moldura">{{SVG_PLACA_E}}<figcaption>Metade esquerda (colunas 1 a 17).</figcaption></figure>
+    <figure class="moldura">{{SVG_PLACA_D}}<figcaption>Metade direita (colunas 17 a 34).</figcaption></figure>
+  </div>
+  <div class="leg" aria-label="Tarefas">{{LEGENDA_TAREFAS}}</div>
+
+  <div class="cabeca" style="margin-top:36px"><h3>Pinos do Raspberry que a placa usa</h3><p>Número BCM (o de “GPIO”) é o do código Python. O número no círculo é a posição física.</p></div>
+  <div class="so-largo">
+    <figure class="moldura">{{SVG_PINOS}}</figure>
+  </div>
+  <div class="so-estreito">
+    <figure class="moldura">{{SVG_PINOS_E}}<figcaption>Pinos 1 a 20.</figcaption></figure>
+    <figure class="moldura">{{SVG_PINOS_D}}<figcaption>Pinos 21 a 40.</figcaption></figure>
+  </div>
+  <div class="leg-pinos"><span><i class="c" style="border:1.5px solid var(--pcb-line)"></i>GPIO livre</span><span><i style="background:#d64541"></i>5 V</span><span><i style="background:#e8892b"></i>3,3 V</span><span><i style="background:#2b302d"></i>GND</span><span><i class="c" style="background:var(--accent)"></i>GPIO em uso (cor da tarefa)</span></div>
+
+  <div class="figs dois" style="margin-top:18px">
+    <div class="aviso"><b>Quem alimenta os servos?</b> O jumper JP1. Em RPi, o 5 V vem do Raspberry. Em EXT, vem da fonte ligada no J7. Pi reiniciando quando o servo mexe: passe para EXT.</div>
+    <div class="erro"><b>Antes de ligar:</b> com o jumper fora, meça continuidade. Não pode haver curto entre os dois 5 V (RPi e EXT), nem entre um 5 V e o GND.</div>
+  </div>
+</div></details>
+
+<details class="ref" id="entregavel"><summary><span class="ref-tx"><span class="ref-t">Replicar a placa: lado do cobre, materiais, montagem e testes</span><span class="ref-s">O entregável do circuito: o suficiente para montar uma placa igual</span></span></summary><div class="ref-corpo">
+  <p class="fraseg">O desenho do lado do cobre, o que comprar, o que liga em quê, a ordem de solda e os testes. O projeto do KiCad e a etiqueta Pimaco ficam no repositório, na pasta <code>hardware/</code>.</p>
+
+  <div class="bloco"><h4>1. Lado do cobre (vire a placa como a página de um livro: a coluna 1 fica à direita)</h4>
+    <figure class="moldura"><div class="rolar">{{SVG_COBRE}}</div><figcaption>Trilhas coloridas por rede: são pontes de solda ou fio estanhado ligando ilhas vizinhas em linha reta. Os fios cinza W1 a W4 são encapados, passam rente à borda de cima e ligam a fileira A ao destino. O retângulo tracejado é o corpo da barra 2 × 20.</figcaption></figure>
+    {{LEGENDA_COBRE}}
+  </div>
+
+  <div class="bloco"><h4>2. Lista de materiais</h4>{{TABELA_BOM}}</div>
+
+  <div class="bloco"><h4>3. Ordem de montagem</h4>
+    <ol class="passos-m">
+      <li><b>Etiqueta.</b> Imprima a etiqueta Pimaco 6282 a 100% e teste antes em papel comum. Cole a A na borda de cima e a B (cortada na linha tracejada) embaixo. Fure só os círculos, de baixo para cima.</li>
+      <li><b>Barramentos.</b> GND (coluna 1 e fileira N, colunas 34 e 27) e +5V (coluna 12 e fileira M).</li>
+      <li><b>Trilhas curtas</b> de cada bloco: LED, DHT11, botão, buzzer, servos, potenciômetro e HC-SR04.</li>
+      <li><b>Pontes das fileiras A e D</b> até os pinos do J1, antes de soldar a barra 2 × 20.</li>
+      <li><b>Barra 2 × 20 de pinos longos</b>, com o corpo uns 3 mm afastado da placa, e depois os fios W1 a W4.</li>
+      <li><b>Componentes</b> (sugestão: dos mais baixos para os mais altos): resistores, C1, Q1, conectores, RV1, borne J7 e C2.</li>
+    </ol>
+  </div>
+
+  <div class="bloco"><h4>4. Testes antes de ligar</h4>
+    <ul class="passos-m">
+      <li>Com o jumper do JP1 fora, não pode haver continuidade entre o 5 V do Raspberry e o 5 V externo.</li>
+      <li>Nenhum curto entre qualquer 5 V e o GND, nem entre o 3V3 e o GND.</li>
+      <li>Com o multímetro em continuidade, confira as trilhas da etiqueta uma a uma.</li>
+      <li>Primeira ligação sem os módulos e com o jumper em RPi: meça 5 V no JP1 e 3,3 V no J5.</li>
+      <li>Com o jumper em EXT, ligue a fonte externa antes ou junto com o Pi. O − da fonte fica ligado ao GND da placa.</li>
+    </ul>
+  </div>
+
+  <div class="bloco"><h4>5. Etiqueta Pimaco 6282</h4>
+    <p>É a folha carta com 2 colunas × 7 linhas de 101,6 × 33,9 mm. A etiqueta A cobre a borda de cima e a B cobre o resto. Imprima a 100% (“tamanho real”, sem “ajustar à página”). O arquivo <code>etiquetas_teste_papel_comum.pdf</code> serve para conferir o alinhamento em papel comum, contra a luz sobre a folha. As etiquetas têm 101,6 mm: apare 0,8 mm de cada lado.</p>
+  </div>
+
+  <details><summary>Todas as ligações (cada rede e os pontos que ela liga)</summary>{{TABELA_LIGACOES}}</details>
+
+  <div class="bloco"><h4>Arquivos desta parte no repositório</h4>
+    <div class="tabela"><table>
+      <thead><tr><th>Arquivo</th><th>Para que serve</th></tr></thead>
+      <tbody>
+        <tr><td><code>hardware/placa_interface.kicad_pcb</code> e <code>.kicad_pro</code></td><td>Projeto no KiCad 10</td></tr>
+        <tr><td><code>hardware/montagem_placa_interface.pdf</code></td><td>4 páginas: lado dos componentes, lado do cobre, etiqueta ampliada e lista de montagem</td></tr>
+        <tr><td><code>hardware/trilhas_tamanho_real_A4.pdf</code></td><td>Trilhas em tamanho real (1:1) para conferir sobre a placa</td></tr>
+        <tr><td><code>hardware/etiquetas_A_B_pimaco6282.pdf</code></td><td>Etiqueta para uma placa. Há também <code>_folha_cheia</code> (7 placas) e <code>_teste_papel_comum</code></td></tr>
+        <tr><td><code>hardware/gerador/</code></td><td>Scripts que geram tudo a partir do <code>design.py</code>, a fonte da verdade (peças, furos e trilhas)</td></tr>
+        <tr><td><code>docs/lista_de_materiais.csv</code> e <code>ligacoes_netlist.csv</code></td><td>As tabelas acima, para abrir em planilha</td></tr>
+      </tbody></table></div>
+  </div>
+</div></details>
+
+<details class="ref" id="sistema"><summary><span class="ref-tx"><span class="ref-t">Visão geral do sistema e etapas do trabalho</span><span class="ref-s">Como as partes se ligam (clique num bloco para abrir a tarefa) e o que cada tarefa faz em cada etapa</span></span></summary><div class="ref-corpo">
+  <figure class="moldura"><div class="rolar">{{SVG_SISTEMA}}</div><p class="dica-rolar">Arraste para o lado para ver o diagrama inteiro.</p></figure>
+  <div class="leg" aria-label="Tarefas">{{LEGENDA_TAREFAS}}</div>
+
+  <h4 style="margin:24px 0 8px">Etapas do trabalho</h4>
+  <div class="fase-zero" style="margin-top:0"><b>Fase 0, todos:</b> entrar no Raspberry e rodar o <code>rgb_pwm_interativo.py</code>.</div>
+  <div class="tabela">
+    <table class="fases">
+      <thead><tr><th>Tarefa</th><th>Fase 1: estudar</th><th>Fase 2: entregar</th><th>Fase 3: integrar com</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tp k1"><span class="cr">1</span>Cancelas</span></td><td>Mover os 2 servos</td><td><code>cancelas.py</code></td><td>2: abre quando o carro chega</td></tr>
+        <tr><td><span class="tp k2"><span class="cr">2</span>Presença</span></td><td>Ler distância, conferir com régua</td><td><code>presenca.py</code></td><td>1: carro na frente, cancela abre</td></tr>
+        <tr><td><span class="tp k3"><span class="cr">3</span>Guarita</span></td><td>Calibrar o pot, ler o botão</td><td><code>manual.py</code></td><td>1: o pot move o servo 1</td></tr>
+        <tr><td><span class="tp k4"><span class="cr">4</span>Sinalização</span></td><td>Cores e 4 notas</td><td><code>sinais.py</code></td><td>6: um sinal por estado</td></tr>
+        <tr><td><span class="tp k5"><span class="cr">5</span>Ambiente</span></td><td>Ler temp. e umidade</td><td><code>ambiente.py</code></td><td>7: enviar a leitura</td></tr>
+        <tr><td><span class="tp k6"><span class="cr">6</span>Lógica</span></td><td>Estados e esqueleto com falsos</td><td><code>main.py</code> rodando</td><td>troca falsos pelos reais</td></tr>
+        <tr><td><span class="tp k7"><span class="cr">7</span>Backend</span></td><td>API e teste com curl</td><td>endpoints do <a href="#contrato">contrato</a></td><td>6: eventos de verdade</td></tr>
+        <tr><td><span class="tp k8"><span class="cr">8</span>Frontend</span></td><td>Painel com números de exemplo</td><td>painel lendo <code>/api/resumo</code></td><td>7: gráfico e botão de saída</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="fase-quatro"><b>Fase 4, todos:</b> ensaio e demonstração (roteiro em <a href="#demo">Demo</a>).</div>
+
+  <h4 style="margin:24px 0 10px">Decisões já tomadas</h4>
+  <div class="decididas">
+    <div><b>Servos</b>Servo 1 (GPIO13, J2) é a entrada e a guarita. Servo 2 (GPIO26, J3) é a saída.</div>
+    <div><b>Saída</b>O porteiro clica “Liberar saída” no painel. O servo 2 abre, espera 2 s e fecha. Conta uma saída.</div>
+    <div><b>Vagas</b><code>MAX_VAGAS = 6</code> mora no <code>server.js</code> e sai no <code>/api/resumo</code> como <code>vagas</code>. A cancela fecha 2 s depois do carro passar.</div>
+  </div>
+</div></details>
+
+<details class="ref" id="codigos"><summary><span class="ref-tx"><span class="ref-t">Códigos de teste (antigo)</span><span class="ref-s">Os 9 scripts de teste do começo do projeto (pasta <code>~/codigos</code>), conferidos com os pinos da placa: 2 estão certos, 1 é só teste e 6 precisam de ajuste. No sistema final, importe os pinos de <code>pinos.py</code> em vez de digitar números.</span></span></summary><div class="ref-corpo">
+  <div class="cartoes-cod">
+    <div class="cod-card ok"><div class="l1"><code>rgb_pwm_interativo.py</code><span class="sel">Certo</span></div><p>R=4, G=17, B=27, botão=5. Use de exemplo de LED RGB e botão.</p></div>
+    <div class="cod-card ok"><div class="l1"><code>calibracao_pot2.py</code><span class="sel">Certo</span></div><p>12 carrega, 25 lê. Base da tarefa 3. Falta salvar a calibração.</p></div>
+    <div class="cod-card ok"><div class="l1"><code>calibracao_pot.py</code><span class="sel">Só teste</span></div><p>Pinos 12 e 25 certos. A <code>pot2</code> a substituiu.</p></div>
+    <div class="cod-card ru"><div class="l1"><code>sensor_distancia.py</code><span class="sel">TRIG e ECHO trocados</span></div><p>Use <code>DistanceSensor(echo=24, trigger=23, max_distance=2)</code>. Troque o <code>LED(2)</code> pelo LED RGB.</p></div>
+    <div class="cod-card ru"><div class="l1"><code>sensor_distacia_rgb.py</code><span class="sel">Pinos e LED errados</span></div><p>Use <code>RGBLED(red=4, green=17, blue=27, active_high=False)</code> e os pinos do sensor acima. Renomeie “distacia”.</p></div>
+    <div class="cod-card av"><div class="l1"><code>led_rgb.py</code><span class="sel">Pinos antigos</span></div><p>Troque o <code>TrafficLights(2, 3, 4)</code> por <code>RGBLED</code> com 4, 17 e 27.</p></div>
+    <div class="cod-card av"><div class="l1"><code>blink.py</code><span class="sel">Pisca invertido</span></div><p>GPIO17 é o verde do RGB (ânodo comum). Use <code>LED(17, active_high=False)</code>.</p></div>
+    <div class="cod-card av"><div class="l1"><code>ledBotao.py</code><span class="sel">Botão errado</span></div><p>O botão da placa é o GPIO5: <code>Button(5)</code>. O LED, como no <code>blink.py</code>.</p></div>
+    <div class="cod-card av"><div class="l1"><code>potenciometro.py</code><span class="sel">Pinos antigos</span></div><p>Usa 14 e 15. Não use: troque pela <code>calibracao_pot2.py</code>.</p></div>
+  </div>
+  <div class="bloco" style="margin-top:16px">
+    <h4>pinos.py: a única fonte de verdade dos pinos</h4>
+    {{CODE:t0_pinos.py|pinos.py}}
+  </div>
+</div></details>
+
+<details class="ref" id="contrato"><summary><span class="ref-tx"><span class="ref-t">API: o que as tarefas 5, 6, 7 e 8 combinam</span><span class="ref-s">Seis chamadas. Fechem isto no primeiro dia.</span></span></summary><div class="ref-corpo">
+  <div class="tabela">
+    <table>
+      <thead><tr><th>De → para</th><th>Chamada</th><th>Corpo ou resposta</th></tr></thead>
+      <tbody>
+        <tr><td>Python → Node</td><td><code>POST /api/eventos</code></td><td><code>{"tipo": "entrada"}</code> ou <code>{"tipo": "saida"}</code>. Uma saída com ninguém dentro devolve 409</td></tr>
+        <tr><td>Python → Node</td><td><code>POST /api/ambiente</code></td><td><code>{"temperatura": 26.0, "umidade": 58}</code></td></tr>
+        <tr><td>Python → Node</td><td><code>GET /api/comandos/proximo</code></td><td>O comando mais antigo ainda não feito, já marcado como feito: <code>{"alvo": "saida", "acao": "abrir"}</code>. Se não há, 204 sem corpo</td></tr>
+        <tr><td>Página → Node</td><td><code>GET /api/resumo</code></td><td><code>{"entradas": 42, "saidas": 39, "dentro": 3, "vagas": 6, "por_dia": [{"dia": "2026-11-03", "entradas": 8, "saidas": 7}, ...]}</code> (últimos 7 dias; dentro e vagas valem para agora)</td></tr>
+        <tr><td>Página → Node</td><td><code>GET /api/ambiente/ultima</code></td><td><code>{"temperatura": 26, "umidade": 58, "criado_em": "..."}</code></td></tr>
+        <tr><td>Página → Node</td><td><code>POST /api/comandos</code></td><td><code>{"alvo": "saida", "acao": "abrir"}</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div></details>
+
+<details class="ref" id="demo"><summary><span class="ref-tx"><span class="ref-t">Roteiro da demonstração (3 minutos)</span><span class="ref-s">É o ensaio da fase 4. Se o time cumprir a lista, o sistema está pronto.</span></span></summary><div class="ref-corpo">
+  <ol class="receita">
+    <li><b>Painel zerado</b>Banco novo, 6 vagas disponíveis.</li>
+    <li><b>Carro chega</b>Caixa a menos de 5 cm: amarelo, música, cancela abre.</li>
+    <li><b>Carro passa</b>Fecha 2 s depois, verde, as vagas disponíveis diminuem.</li>
+    <li><b>Lotado</b>Repita até as vagas disponíveis chegarem a 0: vermelho, 2 bips, não abre.</li>
+    <li><b>Saída</b>“Liberar saída” no painel: servo 2 abre, fecha em 2 s, as vagas disponíveis aumentam.</li>
+    <li><b>Manual</b>Gire o pot: o servo 1 acompanha. Aperte o botão: abre e fecha.</li>
+    <li><b>Ambiente e semana</b>Temperatura, umidade e gráfico da semana.</li>
+  </ol>
+  <h4 style="margin:28px 0 10px">Material de apoio</h4>
+  <ul class="apoio">
+    <li><a href="https://pinout.xyz">pinout.xyz: os 40 pinos</a></li>
+    <li><a href="https://gpiozero.readthedocs.io/en/latest/recipes.html">gpiozero: receitas</a></li>
+    <li><a href="https://gpiozero.readthedocs.io/en/latest/api_output.html">gpiozero: servo, LED RGB, buzzer</a></li>
+    <li><a href="https://gpiozero.readthedocs.io/en/latest/api_input.html">gpiozero: botão e ultrassônico</a></li>
+    <li><a href="https://learn.adafruit.com/dht">Adafruit: DHT11</a></li>
+    <li><a href="https://expressjs.com/pt-br/starter/hello-world.html">Express: primeiro servidor</a></li>
+    <li><a href="https://github.com/WiseLibs/better-sqlite3">better-sqlite3</a></li>
+    <li><a href="https://www.chartjs.org/docs/latest/">Chart.js</a></li>
+    <li><a href="https://developer.mozilla.org/pt-BR/docs/Web/API/Fetch_API/Using_Fetch">Fetch (MDN)</a></li>
+  </ul>
+</div></details>
+
+
+<details class="ref" id="transferencia"><summary><span class="ref-tx"><span class="ref-t">Entrega: o que foi entregue e como usar</span><span class="ref-s">O que tem no repositório e como usar cada parte</span></span></summary><div class="ref-corpo">
+
+  <div class="bloco"><h4>O que tem no repositório</h4>
+    <div class="tabela"><table class="repo">
+      <thead><tr><th>Pasta ou arquivo</th><th>O que tem</th></tr></thead>
+      <tbody>
+        <tr><td><code>codigo/sistema/</code></td><td><code>main.py</code>, <code>cancelas.py</code>, <code>presenca.py</code>, <code>manual.py</code>, <code>sinais.py</code>, <code>ambiente.py</code>, <code>pinos.py</code>, <code>server.js</code>, <code>public/</code>, <code>estacionamento.service</code> e <code>estacionamento-web.service</code></td></tr>
+        <tr><td><code>codigo/starter/</code></td><td>Código de partida das 8 tarefas</td></tr>
+        <tr><td><code>codigo/exemplos_originais/</code></td><td>Os 9 scripts do começo do projeto</td></tr>
+        <tr><td><code>hardware/</code></td><td>Projeto KiCad, PDFs de montagem, trilhas em 1:1 e etiqueta Pimaco</td></tr>
+        <tr><td><code>docs/</code></td><td>Lista de materiais e ligações (CSV)</td></tr>
+        <tr><td><code>guia/</code></td><td>Este guia (<code>index.html</code>) e o gerador dele</td></tr>
+        <tr><td><code>README.md</code></td><td>Resumo do projeto e comandos</td></tr>
+      </tbody></table></div>
+  </div>
+
+  <div class="bloco"><h4>Como usar</h4>
+    <h4 style="margin-top:6px">Rodar o sistema no Raspberry</h4>
+    <pre class="term"><span class="c"># No Raspberry (uma vez)</span>
+sudo apt update &amp;&amp; sudo apt install -y python3-gpiozero python3-requests libgpiod2 nodejs npm
+pip3 install adafruit-circuitpython-dht
+
+<span class="c"># No seu PC: copiar o sistema (troque pelo IP de hoje)</span>
+scp -r codigo/sistema dsm@192.168.0.153:~/codigos/final
+
+<span class="c"># No Raspberry: instalar o servidor e ligar os serviços</span>
+cd ~/codigos/final &amp;&amp; npm install
+sudo cp estacionamento.service estacionamento-web.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now estacionamento-web estacionamento
+
+<span class="c"># Painel, no navegador do PC ou do celular</span>
+http://raspberrypi.local:3000</pre>
+
+    <h4 style="margin-top:10px">Montar a placa</h4>
+    <ul class="passos-m">
+      <li>Lista de compras: <code>docs/lista_de_materiais.csv</code></li>
+      <li>Etiqueta (imprimir a 100%): <code>hardware/etiquetas_A_B_pimaco6282.pdf</code></li>
+      <li>Ordem de montagem e testes: seção “Replicar a placa” deste guia</li>
+    </ul>
+
+    <h4 style="margin-top:10px">Testar uma peça</h4>
+    <pre class="term"><span class="c"># pare o sistema antes (veja “Rodar sem conflito”)</span>
+sudo systemctl stop estacionamento
+python3 codigo/starter/tarefa2_teste_distancia.py</pre>
+
+    <h4 style="margin-top:10px">Gerar de novo este guia</h4>
+    <pre class="term">python3 guia/gerador/montar.py</pre>
+  </div>
+</div></details>
+
+</main>
+<footer><div class="wrap">Guia gerado a partir do projeto da placa de interface (versão 2) e dos scripts da pasta <code>~/codigos</code>.</div></footer>
+
+<script>
+(function () {
+  document.documentElement.classList.add('js');
+  var paineis = Array.prototype.slice.call(document.querySelectorAll('.tarefa'));
+  var abas = Array.prototype.slice.call(document.querySelectorAll('.aba'));
+
+  function mostrar(n) {
+    paineis.forEach(function (p) { p.hidden = p.getAttribute('data-n') !== String(n); });
+    abas.forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-tab') === String(n) ? 'true' : 'false'); });
+  }
+  function doHash() {
+    var m = /^#tarefa-([1-8])$/.exec(location.hash);
+    return m ? m[1] : null;
+  }
+  function aoMudarHash() {
+    var n = doHash();
+    if (!n) return;
+    mostrar(n);
+    var el = document.getElementById('tarefa-' + n);
+    if (el) el.scrollIntoView({ block: 'start' });
+  }
+  abas.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var n = b.getAttribute('data-tab');
+      if (location.hash === '#tarefa-' + n) { mostrar(n); } else { location.hash = 'tarefa-' + n; }
+    });
+  });
+  function abrirRef() {
+    var id = location.hash.slice(1);
+    var el = id ? document.getElementById(id) : null;
+    if (el && el.tagName === 'DETAILS' && el.classList.contains('ref')) {
+      el.open = true;
+      el.scrollIntoView({ block: 'start' });
+    }
+  }
+  var NOMES = { 1: 'tarefa 1 (Cancelas)', 2: 'tarefa 2 (Presença)', 3: 'tarefa 3 (Guarita manual)', 4: 'tarefa 4 (Sinalização)', 5: 'tarefa 5 (Ambiente)' };
+  function focarPlaca(n) {
+    var raiz = document.getElementById('placa');
+    if (!raiz) return;
+    Array.prototype.forEach.call(raiz.querySelectorAll('svg.placa'), function (sv) {
+      for (var t = 1; t <= 5; t++) sv.style.setProperty('--o' + t, (!n || t === n) ? '1' : '.12');
+      sv.style.setProperty('--o0', n ? '.55' : '1');
+    });
+    Array.prototype.forEach.call(raiz.querySelectorAll('svg.pinos .pad-g, svg.pinos .gpio, svg.pinos .func'), function (el) {
+      var m = /(?:^|\s)k([1-8])(?:\s|$)/.exec(el.getAttribute('class') || '');
+      var apagar = n && m && Number(m[1]) !== n;
+      el.style.opacity = apagar ? '.15' : '';
+      if (el.classList.contains('pad-g') && el.nextElementSibling) el.nextElementSibling.style.opacity = apagar ? '.15' : '';
+    });
+    var aviso = document.getElementById('foco-aviso');
+    var nome = document.getElementById('foco-nome');
+    if (aviso) aviso.hidden = !n;
+    if (nome) nome.textContent = NOMES[n] || '';
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.btn-placa'), function (b) {
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
+      focarPlaca(Number(b.getAttribute('data-foco')) || 0);
+      var alvo = document.getElementById('placa');
+      if (location.hash !== '#placa') { location.hash = 'placa'; }
+      if (alvo) { alvo.open = true; alvo.scrollIntoView({ block: 'start' }); }
+    });
+  });
+  var limpar = document.getElementById('foco-limpar');
+  if (limpar) limpar.addEventListener('click', function () { focarPlaca(0); });
+  window.addEventListener('hashchange', abrirRef);
+  window.addEventListener('hashchange', aoMudarHash);
+  var inicial = doHash();
+  mostrar(inicial || 1);
+  if (inicial) { setTimeout(aoMudarHash, 0); }
+  setTimeout(abrirRef, 0);
+
+  // checklist da missão (só no navegador de quem usa)
+  var guarda = null;
+  try { guarda = window.localStorage; guarda.getItem('estac-teste'); } catch (e) { guarda = null; }
+  function ler(k) { try { return !!guarda && guarda.getItem('estac-' + k) === '1'; } catch (e) { return false; } }
+  function gravar(k, v) { try { if (guarda) guarda.setItem('estac-' + k, v ? '1' : '0'); } catch (e) {} }
+  var caixas = Array.prototype.slice.call(document.querySelectorAll('.check input[type="checkbox"]'));
+  function progresso() {
+    Array.prototype.forEach.call(document.querySelectorAll('.prog'), function (p) {
+      var n = p.getAttribute('data-prog');
+      var todas = document.querySelectorAll('#tarefa-' + n + ' .check input');
+      var feitas = 0;
+      Array.prototype.forEach.call(todas, function (c) { if (c.checked) feitas++; });
+      p.textContent = feitas + ' de ' + todas.length + ' feitos';
+      p.classList.toggle('ok', todas.length > 0 && feitas === todas.length);
+    });
+  }
+  caixas.forEach(function (c) {
+    c.checked = ler(c.getAttribute('data-k'));
+    c.addEventListener('change', function () { gravar(c.getAttribute('data-k'), c.checked); progresso(); });
+  });
+  progresso();
+
+  // botões de copiar
+  function copiarTexto(texto, botao) {
+    var original = botao.textContent;
+    function ok() { botao.textContent = 'Copiado'; setTimeout(function () { botao.textContent = original; }, 1500); }
+    function falhou() { botao.textContent = 'Selecione e Ctrl+C'; setTimeout(function () { botao.textContent = original; }, 2500); }
+    try { navigator.clipboard.writeText(texto).then(ok, falhou); } catch (e) { falhou(); }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.copiar'), function (b) {
+    b.addEventListener('click', function () {
+      var texto = b.getAttribute('data-copiar');
+      if (texto === null) {
+        var pre = b.closest('.codigo').querySelector('pre');
+        texto = pre ? pre.textContent : '';
+      }
+      copiarTexto(texto, b);
+    });
+  });
+})();
+</script>
+</body>
+</html>
