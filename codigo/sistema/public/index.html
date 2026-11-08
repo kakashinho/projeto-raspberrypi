@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estacionamento</title>
+<script src="/vendor/chart.umd.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --fundo: #f5f4f1; --cartao: #ffffff; --linha: #e4e2dc;
+    --texto: #111111; --texto-2: #55534e; --texto-3: #7a7872;
+    --entradas: #2a78d6; --saidas: #eb6834;
+    --bom: #0a7a0a; --ruim: #b42323;
+    --botao: #eb6834; --botao-texto: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --fundo: #121211; --cartao: #1b1b1a; --linha: #303030;
+      --texto: #f0efec; --texto-2: #c3c2b7; --texto-3: #9d9c95;
+      --entradas: #3987e5; --saidas: #d95926;
+      --bom: #5bd05b; --ruim: #ef7b7b;
+      --botao: #d95926; --botao-texto: #ffffff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto);
+         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 22px 16px 36px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 16px; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  .sub-titulo { color: var(--texto-3); font-size: .9rem; }
+  .estado { margin-left: auto; font-size: .9rem; font-weight: 600; }
+  .estado.ok { color: var(--bom); } .estado.ruim { color: var(--ruim); }
+
+  .cartao { background: var(--cartao); border: 1px solid var(--linha); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+  .rotulo { margin: 0 0 6px; font-size: .9rem; font-weight: 600; color: var(--texto-2); }
+  .numero { font-size: 2.6rem; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .numero small { font-size: 1rem; font-weight: 500; color: var(--texto-3); margin-left: 4px; }
+  .detalhe { color: var(--texto-3); font-size: .85rem; margin-top: 4px; }
+
+  .topo { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; }
+  .meio { display: grid; gap: 12px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  @media (max-width: 860px) { .topo { grid-template-columns: repeat(2, minmax(0, 1fr)); } .meio { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 420px) { .numero { font-size: 2.1rem; } }
+
+  .grafico-caixa { position: relative; height: 300px; margin-top: 6px; width: 100%; }
+  .grafico-caixa canvas { max-width: 100%; }
+  header { max-width: 100%; }
+  .legenda-dica { color: var(--texto-3); font-size: .85rem; margin-top: 8px; }
+
+  .guarita p { color: var(--texto-2); margin: 6px 0 16px; font-size: .95rem; }
+  #btn-saida { width: 100%; font: inherit; font-weight: 700; font-size: 1.05rem; padding: 14px; border: 0; border-radius: 10px;
+               background: var(--botao); color: var(--botao-texto); cursor: pointer; }
+  #btn-saida:disabled { background: var(--linha); color: var(--texto-3); cursor: not-allowed; }
+  #btn-saida:focus-visible { outline: 3px solid var(--entradas); outline-offset: 2px; }
+  #msg { min-height: 1.4em; margin-top: 10px; font-size: .9rem; color: var(--texto-2); }
+  #msg.erro { color: var(--ruim); } #msg.certo { color: var(--bom); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Estacionamento</h1>
+    <span class="sub-titulo">semana atual</span>
+    <span class="estado" id="estado">conectando…</span>
+  </header>
+
+  <section class="topo" aria-label="Resumo">
+    <div class="cartao">
+      <p class="rotulo">Vagas disponíveis agora</p>
+      <div class="numero" id="livres">–</div>
+      <div class="detalhe" id="ocupadas">–</div>
+    </div>
+    <div class="cartao">
+      <p class="rotulo">Entradas na semana</p>
+      <div class="numero" id="entradas">–</div>
+      <div class="detalhe">últimos 7 dias</div>
+    </div>
+    <div class="cartao">
+      <p class="rotulo">Saídas na semana</p>
+      <div class="numero" id="saidas">–</div>
+      <div class="detalhe">últimos 7 dias</div>
+    </div>
+    <div class="cartao">
+      <p class="rotulo">Ambiente</p>
+      <div class="numero" id="temp">–</div>
+      <div class="detalhe" id="umid">umidade –</div>
+      <div class="detalhe" id="amb-quando">aguardando leitura</div>
+    </div>
+  </section>
+
+  <section class="meio">
+    <div class="cartao">
+      <p class="rotulo">Entradas e saídas por dia</p>
+      <div class="grafico-caixa"><canvas id="grafico" role="img" aria-label="Gráfico de barras das entradas e saídas dos últimos 7 dias"></canvas></div>
+      <p class="legenda-dica" id="sem-dados" hidden>Ainda não houve entradas nem saídas nesta semana.</p>
+    </div>
+
+    <div class="cartao guarita">
+      <p class="rotulo">Guarita</p>
+      <button id="btn-saida" type="button" disabled>Liberar saída</button>
+      <p>Abre a cancela de saída, espera 2 s, fecha e conta uma saída.</p>
+      <div id="msg" role="status"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+let ultimo = null;
+let reenvioEm = 0;
+
+function nomeDoDia(iso, i, total) {
+  if (i === total - 1) return 'hoje';
+  const [a, m, d] = iso.split('-').map(Number);
+  return `${DIAS[new Date(a, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}`;
+}
+
+function cor(nome) {
+  return getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+}
+
+
+const grafico = new Chart($('grafico'), {
+  type: 'bar',
+  data: { labels: [], datasets: [
+    { label: 'Entradas', data: [], backgroundColor: cor('--entradas'), borderRadius: 4, maxBarThickness: 26 },
+    { label: 'Saídas', data: [], backgroundColor: cor('--saidas'), borderRadius: 4, maxBarThickness: 26 },
+  ] },
+  options: {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    scales: {
+      y: { beginAtZero: true, ticks: { precision: 0, color: cor('--texto-3') }, grid: { color: cor('--linha') } },
+      x: { ticks: { color: cor('--texto-3') }, grid: { display: false } },
+    },
+    plugins: { legend: { position: 'bottom', labels: { color: cor('--texto-2'), usePointStyle: true, boxWidth: 10 } } },
+  },
+});
+
+function atualizarGrafico(d) {
+  const dias = d.por_dia;
+  grafico.data.labels = dias.map((x, i) => nomeDoDia(x.dia, i, dias.length));
+  grafico.data.datasets[0].data = dias.map((x) => x.entradas);
+  grafico.data.datasets[1].data = dias.map((x) => x.saidas);
+  grafico.update('none');
+  $('sem-dados').hidden = dias.some((x) => x.entradas + x.saidas > 0);
+}
+
+function atualizarBotao(d) {
+  const b = $('btn-saida');
+  b.disabled = !(d.dentro > 0 && d.controlador_online) || Date.now() < reenvioEm;
+  const msg = $('msg');
+  if (msg.dataset.fixa) return;
+  if (!d.controlador_online) { msg.className = 'erro'; msg.textContent = 'Sistema físico desligado: a cancela não vai abrir.'; }
+  else if (d.dentro === 0) { msg.className = ''; msg.textContent = 'Não há carros dentro.'; }
+  else { msg.className = ''; msg.textContent = ''; }
+}
+
+function falar(texto, classe) {
+  const msg = $('msg');
+  msg.className = classe; msg.textContent = texto; msg.dataset.fixa = '1';
+  setTimeout(() => { delete msg.dataset.fixa; if (ultimo) atualizarBotao(ultimo); }, 4000);
+}
+
+$('btn-saida').addEventListener('click', async () => {
+  const b = $('btn-saida');
+  b.disabled = true; reenvioEm = Date.now() + 5000;
+  try {
+    const r = await fetch('/api/comandos', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                             body: JSON.stringify({ alvo: 'saida', acao: 'abrir' }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) falar('Pedido enviado: a cancela de saída vai abrir.', 'certo');
+    else { reenvioEm = 0; falar(j.erro ? j.erro.charAt(0).toUpperCase() + j.erro.slice(1) + '.' : 'Não foi possível enviar o pedido.', 'erro'); }
+  } catch (e) { reenvioEm = 0; falar('Sem conexão com o servidor.', 'erro'); }
+  if (ultimo) atualizarBotao(ultimo);
+});
+
+function quando(seg) {
+  if (seg < 60) return `medido há ${seg} s`;
+  if (seg < 3600) return `medido há ${Math.round(seg / 60)} min`;
+  return `medido há ${Math.round(seg / 3600)} h`;
+}
+
+async function atualizar() {
+  try {
+    const [r1, r2] = await Promise.all([fetch('/api/resumo'), fetch('/api/ambiente/ultima')]);
+    const d = await r1.json();
+    ultimo = d;
+
+    const livres = Math.max(0, d.vagas - d.dentro);
+    $('livres').innerHTML = `${livres}<small>de ${d.vagas}</small>`;
+    $('ocupadas').textContent = `${d.dentro} ocupada(s) agora`;
+    $('entradas').textContent = d.entradas;
+    $('saidas').textContent = d.saidas;
+
+    const e = $('estado');
+    e.className = 'estado ' + (d.controlador_online ? 'ok' : 'ruim');
+    e.textContent = d.controlador_online ? 'Sistema físico ligado' : 'Sistema físico desligado';
+
+    atualizarGrafico(d);
+    atualizarBotao(d);
+
+    if (r2.status === 200) {
+      const a = await r2.json();
+      $('temp').innerHTML = `${a.temperatura.toFixed(0)}<small>°C</small>`;
+      $('umid').textContent = `umidade ${Math.round(a.umidade)} %`;
+      $('amb-quando').textContent = quando(a.ha_segundos);
+    }
+  } catch (err) {
+    const e = $('estado');
+    e.className = 'estado ruim';
+    e.textContent = 'Sem conexão com o servidor';
+  }
+}
+atualizar();
+setInterval(atualizar, 2000);
+</script>
+</body>
+</html>
