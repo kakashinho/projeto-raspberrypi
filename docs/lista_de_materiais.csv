@@ -1,0 +1,23 @@
+﻿quantidade,componente,valor_ou_modelo,referencia,observacao
+1,Placa ilhada 5 × 10 cm,"fenolite, face simples, ilhas isoladas, 34 × 15 furos e 4 tiras de cobre na borda",—,"furos a cada 2,54 mm"
+1,"Barra fêmea 2 × 20, pinos longos (stacking)","2,54 mm",J1,o corpo fica no lado do cobre e encaixa no Raspberry; os pinos saem por cima
+1,Barra de pinos macho 1 × 40 (quebrável),"2,54 mm","JP1 (1×3), J2 e J3 (1×3 cada), J4 (1×4), J8 (1×2)","15 pinos no total. O J4 foi projetado macho: o HC-SR04 tem pinos macho, então ligue com cabo dupont fêmea-fêmea, ou use barra fêmea no lugar"
+1,Barra fêmea 1 × 40 (quebrável),"2,54 mm",J5 e J6 (1×3 cada),"6 pinos, para os módulos DHT11 e buzzer"
+1,Jumper (shunt),"2,54 mm",JP1,escolhe a origem do 5 V das cargas
+1,Borne de parafuso 2 vias,"passo 5,08 mm",J7,entrada da fonte externa de 5 V
+3,Resistor,"330 Ω, 1/4 W","R3, R4, R5",R3 e R4 formam o divisor do ECHO; R5 limita o LED
+2,Resistor,"10 kΩ, 1/4 W","R1, R2",circuito do potenciômetro
+1,Resistor,"1 kΩ, 1/4 W",R6,base do transistor do buzzer
+1,Capacitor cerâmico,100 nF,C1,circuito do potenciômetro
+1,Capacitor eletrolítico,"470 µF, 25 V",C2,marque a polaridade; fica entre o 5 V e o GND
+1,Potenciômetro linear,10 kΩ,RV1,
+1,Transistor NPN,BC337 (TO-92),Q1,"face plana para você: C, B, E"
+1,LED RGB 5 mm,ânodo comum,D1,a perna mais comprida é o comum (+)
+1,Chave táctil,"6 × 6 mm, 4 pinos",SW1,use 2 pinos em diagonal
+1,Fio estanhado grosso e fio encapado fino,—,trilhas e W1 a W4,4 pedaços de fio encapado para W1 a W4
+1,Raspberry Pi 3 Model B,,externo,com cartão microSD e fonte do próprio Pi
+1,Sensor ultrassônico HC-SR04,,externo,4 pinos
+2,Servomotor,,externo,SG90 ou equivalente (3 fios)
+1,Módulo DHT11,,externo,"3 pinos, com resistor de pull-up"
+1,Buzzer,,externo,ligado ao J6 (confira se o seu é ativo ou passivo)
+1,Fonte de 5 V externa (opcional),,externo,"para os servos, se o Pi reiniciar quando eles se mexem"
