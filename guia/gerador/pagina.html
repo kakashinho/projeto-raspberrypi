@@ -1010,6 +1010,10 @@ Resposta de 192.168.0.153: bytes=32 tempo=9ms TTL=64</pre>
         <li>Falta a biblioteca? <code>sudo apt install python3-requests</code>.</li>
         <li><b>Os módulos só têm funções.</b> Um <code>while True</code> solto num módulo trava o <code>main.py</code> na hora do <code>import</code>. Teste dentro de <code>if __name__ == "__main__":</code>.</li>
         <li>Músicas e esperas param o loop. Mantenha as músicas curtas. Durante uma entrada, o painel e o manual esperam: é aceitável no protótipo.</li>
+        <li><b>Batimento.</b> Envie <code>POST /api/controlador/batimento</code> a cada 3 s enquanto espera. Sem ele, o painel mostra o controlador desligado e o botão de saída dá 503.</li>
+        <li><b>Servidor fora do ar.</b> Guarde cada entrada ou saída numa fila e envie quando o servidor voltar. A cancela continua abrindo.</li>
+        <li><b>Cooldown.</b> Depois de registrar uma entrada, espere 6 s antes de aceitar outro carro na mesma leitura, para não contar duas vezes.</li>
+        <li><b>Modo manual.</b> Ao desligar, feche as duas cancelas.</li>
         <li>Feche o <a href="#contrato">contrato da API</a> com a tarefa 7 no primeiro dia.</li>
       </ul></div>
     </div>
@@ -1103,6 +1107,7 @@ Resposta de 192.168.0.153: bytes=32 tempo=9ms TTL=64</pre>
       </div>
       <div class="bloco"><h4>Cuidado</h4><ul>
         <li>No Raspberry, abra <code>http://IP-do-Pi:3000</code> (o IP de hoje) ou <code>http://raspberrypi.local:3000</code>.</li>
+        <li><b>Liberar saída.</b> Resposta 409: ninguém dentro. Resposta 503: o <code>main.py</code> está desligado (sem batimento há 15 s). Mostre a mensagem na tela.</li>
         <li>Se a API cair, mostre “sem conexão” em vez de quebrar a tela.</li>
       </ul></div>
     </div>
@@ -1244,11 +1249,12 @@ Resposta de 192.168.0.153: bytes=32 tempo=9ms TTL=64</pre>
       <thead><tr><th>De → para</th><th>Chamada</th><th>Corpo ou resposta</th></tr></thead>
       <tbody>
         <tr><td>Python → Node</td><td><code>POST /api/eventos</code></td><td><code>{"tipo": "entrada"}</code> ou <code>{"tipo": "saida"}</code>. Uma saída com ninguém dentro devolve 409</td></tr>
-        <tr><td>Python → Node</td><td><code>POST /api/ambiente</code></td><td><code>{"temperatura": 26.0, "umidade": 58}</code></td></tr>
-        <tr><td>Python → Node</td><td><code>GET /api/comandos/proximo</code></td><td>O comando mais antigo ainda não feito, já marcado como feito: <code>{"alvo": "saida", "acao": "abrir"}</code>. Se não há, 204 sem corpo</td></tr>
-        <tr><td>Página → Node</td><td><code>GET /api/resumo</code></td><td><code>{"entradas": 42, "saidas": 39, "dentro": 3, "vagas": 7, "por_dia": [{"dia": "2026-11-03", "entradas": 8, "saidas": 7}, ...]}</code> (últimos 7 dias; dentro e vagas valem para agora)</td></tr>
+        <tr><td>Python → Node</td><td><code>POST /api/ambiente</code></td><td><code>{"temperatura": 26.0, "umidade": 58}</code>. Valores que não são números devolvem 400</td></tr>
+        <tr><td>Python → Node</td><td><code>POST /api/controlador/batimento</code></td><td>Sem corpo, responde 204. O <code>main.py</code> envia a cada 3 s enquanto espera. Sem ele, depois de 15 s o servidor considera o controlador desligado</td></tr>
+        <tr><td>Python → Node</td><td><code>GET /api/comandos/proximo</code></td><td>O comando mais antigo ainda não feito, já marcado como feito: <code>{"alvo": "saida", "acao": "abrir"}</code>. Se não há, 204 sem corpo. Comando que ninguém pegou em 30 s vira expirado</td></tr>
+        <tr><td>Página → Node</td><td><code>GET /api/resumo</code></td><td><code>{"entradas": 42, "saidas": 39, "dentro": 3, "vagas": 7, "controlador_online": true, "por_dia": [{"dia": "2026-11-03", "entradas": 8, "saidas": 7}, ...]}</code> (últimos 7 dias; dentro e vagas valem para agora; <code>controlador_online</code> diz se o <code>main.py</code> está ligado)</td></tr>
         <tr><td>Página → Node</td><td><code>GET /api/ambiente/ultima</code></td><td><code>{"temperatura": 26, "umidade": 58, "criado_em": "..."}</code></td></tr>
-        <tr><td>Página → Node</td><td><code>POST /api/comandos</code></td><td><code>{"alvo": "saida", "acao": "abrir"}</code></td></tr>
+        <tr><td>Página → Node</td><td><code>POST /api/comandos</code></td><td><code>{"alvo": "saida", "acao": "abrir"}</code>. 201 criado; 200 com <code>"repetido": true</code> se já há um pedido pendente; 400 se alvo ou ação estiverem errados; 409 se ninguém está dentro; 503 se o controlador está desligado</td></tr>
       </tbody>
     </table>
   </div>
