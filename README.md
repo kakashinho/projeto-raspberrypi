@@ -15,7 +15,8 @@ Raspberry Pi, sensores e um painel web para controlar entradas, saídas e vagas.
 </p>
 
 <p align="center">
-<img src="docs/projeto_fisico/fotos/07-painel-e-maquete-em-funcionamento.jpeg" width="760" alt="Protótipo funcionando: painel no notebook e maquete">
+<img src="docs/projeto_fisico/fotos/07-painel-e-maquete-em-funcionamento.jpeg" width="760" alt="Protótipo funcionando: painel no notebook e maquete"><br>
+<sub>Primeiro protótipo</sub>
 </p>
 
 <p align="center">
@@ -94,7 +95,7 @@ flowchart LR
 
 ---
 
-## 👥 Quem fez o quê
+## 👥 Trabalho em equipe
 
 | Integrante | Tarefa | Redes |
 | :-- | :-- | :-- |
@@ -111,15 +112,34 @@ flowchart LR
 
 ## 🔧 Como ficou na prática
 
-Primeiro montamos tudo sobre uma base de papelão, para testar as ligações. Depois veio o protótipo completo, com a maquete e o painel.
+<p align="center">
+<img src="docs/imagens/fluxo_desenvolvimento.png" width="760" alt="Fluxo de desenvolvimento em 4 etapas: planejamento, placa, guia e código, montagem"><br>
+<sub>Fluxo de desenvolvimento, na ordem em que foi feito</sub>
+</p>
 
 <p align="center">
-<img src="hardware/previas/placa_3d_sem_fundo.png" width="620" alt="Placa de interface em 3D (KiCad)"><br>
-<sub>Placa de interface em 3D, feita no KiCad</sub>
+<img src="hardware/previas/placa_3d_com_etiqueta.png" width="760" alt="Placa de interface em 3D (KiCad)"><br>
+<sub>Placa de interface em 3D, feita no KiCad, com a etiqueta PIMACO</sub>
 </p>
 
 <details>
-<summary><b>📷 Fotos da bancada (antes do protótipo)</b></summary>
+<summary><b>▶️ Ver a placa de outros ângulos</b></summary>
+
+<table align="center">
+<tr>
+<td align="center"><img src="hardware/previas/kicad_etiqueta/1_topo_reto.png" width="380" alt="Placa vista de cima"><br><sub>Vista de cima</sub></td>
+<td align="center"><img src="hardware/previas/kicad_etiqueta/2_inclinada.png" width="380" alt="Placa vista inclinada"><br><sub>Vista inclinada</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="hardware/previas/kicad_etiqueta/3_lado_esquerdo.png" width="380" alt="Placa vista do lado esquerdo"><br><sub>Lado esquerdo</sub></td>
+<td align="center"><img src="hardware/previas/kicad_etiqueta/4_lado_direito.png" width="380" alt="Placa vista do lado direito"><br><sub>Lado direito</sub></td>
+</tr>
+</table>
+
+</details>
+
+<details>
+<summary><b>▶️ Antes da montagem: a bancada de testes</b></summary>
 
 <table>
 <tr>
@@ -135,7 +155,7 @@ Primeiro montamos tudo sobre uma base de papelão, para testar as ligações. De
 </details>
 
 <details>
-<summary><b>📷 Fotos do protótipo montado</b></summary>
+<summary><b>▶️ Depois da montagem: o protótipo completo</b></summary>
 
 <table>
 <tr>
@@ -148,14 +168,30 @@ Primeiro montamos tudo sobre uma base de papelão, para testar as ligações. De
 
 ---
 
-## 🧱 Maquete de papelão
+## 🧱 Projeto de montagem da maquete
 
-Feita só com papelão, EVA e papel impresso. Ela desmonta em peças planas que cabem numa pasta.
+O projeto que mostra como montar a maquete. Usa só papelão, EVA e papel impresso, e as peças são planas, para caberem numa pasta.
 
 <p align="center">
-<img src="maquete/previas/vista_3d.png" width="760" alt="Vista 3D da maquete do estacionamento"><br>
-<sub>Vista 3D: abra <a href="maquete/maquete_3d.html">maquete_3d.html</a> para girar o modelo</sub>
+<img src="maquete/previas/angulos/1_inicial.png" width="760" alt="Vista geral da maquete do estacionamento"><br>
+<sub>Para girar o modelo, abra <a href="maquete/maquete_3d.html">maquete_3d.html</a></sub>
 </p>
+
+<details>
+<summary><b>🔍 Mais ângulos da maquete</b></summary>
+
+<table align="center">
+<tr>
+<td align="center"><img src="maquete/previas/angulos/5_lateral_esquerda.png" width="370" alt="Lateral da entrada"><br><sub>Lado da entrada</sub></td>
+<td align="center"><img src="maquete/previas/angulos/8_diagonal_traseira.png" width="370" alt="Diagonal por trás"><br><sub>Por trás, em diagonal</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="maquete/previas/angulos/3_frente.png" width="370" alt="Frente da guarita"><br><sub>Frente da guarita</sub></td>
+<td align="center"><img src="maquete/previas/angulos/9_painel_perto.png" width="370" alt="Painel de perto"><br><sub>Painel de perto (MANUAL e STATUS)</sub></td>
+</tr>
+</table>
+
+</details>
 
 - 📖 [Passo a passo para montar](maquete/LEIA-ME.md)
 - 🧭 [Proposta e decisões](maquete/FASE1_proposta.md)
@@ -194,65 +230,41 @@ Pare o `main.py` antes de testar uma peça.
 | 📕 [Guia em PDF](guia/guia_equipe.pdf) | A mesma versão, para imprimir |
 | 📦 [Transferência](docs/transferencia.md) | O que tem no repositório e como usar cada parte |
 | 🧾 [Lista de materiais](docs/lista_de_materiais.csv) | Componentes da placa |
+| 🔌 [Placa de interface](hardware/README.md) | Projeto da placa no KiCad, arquivos e etiquetas |
+| 🧪 [Códigos de partida](codigo/starter/README.md) | Um esqueleto por tarefa, para começar |
+| ⚙️ [Código final](codigo/sistema/README.md) | O sistema que roda na Raspberry Pi |
 
 ---
 
 <details>
 <summary><b>🔎 Saiba mais</b></summary>
 
-### Pinos (numeração BCM)
+<p align="center">
+<img src="docs/imagens/ilustracao_pinos_gpio.png" width="760" alt="Pinos GPIO usados pela placa, com ilustração de cada componente"><br>
+<sub>Pinos GPIO usados pela placa, na numeração BCM</sub>
+</p>
 
-| Peça | GPIO |
-| :-- | :-- |
-| Servo da entrada / da saída | 13 / 26 |
-| Ultrassônico (TRIG / ECHO) | 23 / 24 |
-| LED RGB (vermelho / verde / azul) | 4 / 17 / 27 |
-| Buzzer | 6 |
-| Botão | 5 |
-| Potenciômetro (carrega / lê) | 12 / 25 |
-| DHT11 | 22 |
+<p align="center">
+<img src="docs/imagens/saiba_regras.png" width="700" alt="Regras de funcionamento do sistema"><br>
+<sub>Regras de funcionamento do sistema</sub>
+</p>
 
-### Regras do sistema
+<p align="center">
+<img src="docs/imagens/saiba_api.png" width="700" alt="Quem faz cada ação no painel e na Raspberry"><br>
+<sub>Quem faz cada ação no painel e na Raspberry</sub>
+</p>
+<p align="center">As rotas exatas estão em <a href="codigo/sistema/server.js"><code>codigo/sistema/server.js</code></a>.</p>
 
-| Regra | Valor |
-| :-- | :-- |
-| Vagas | 7 |
-| Carro na entrada | menos de 5 cm, confirmado em duas leituras |
-| Tempo para fechar a cancela | 2 s |
-| Intervalo mínimo entre entradas | 6 s |
-| Leitura de temperatura e umidade | a cada 30 s |
 
-### API (como o painel e a Raspberry conversam)
+<p align="center">
+<img src="docs/imagens/saiba_testes.png" width="700" alt="Testes feitos antes da entrega"><br>
+<sub>Testes feitos antes da entrega</sub>
+</p>
 
-| O que acontece | Quem faz |
-| :-- | :--: |
-| Registra uma entrada ou saída | 🧠 Raspberry |
-| Recusa saída se não há ninguém dentro | 🧠 Raspberry |
-| Mostra vagas e movimento no painel | 🖥️ Painel |
-| Guarda temperatura e umidade | 🧠 Raspberry |
-| Pede a liberação da saída | 🖥️ Painel |
-| Recebe o pedido e abre a cancela | 🧠 Raspberry |
-
-As rotas exatas estão em [`codigo/sistema/server.js`](codigo/sistema/server.js).
-
-### Testes realizados
-
-- ✅ API: contagem de eventos, recusa de saída sem ninguém dentro e comandos antigos.
-- ✅ Painel: no computador e em tela de celular.
-- ✅ Peças físicas: cada uma testada separadamente.
-- ✅ Controle: `main.py` rodado com as peças reais.
-
-### Pastas do repositório
-
-| Pasta | Conteúdo |
-| :-- | :-- |
-| `codigo/sistema/` | Sistema final |
-| `codigo/starter/` | Códigos de partida das 8 tarefas |
-| `codigo/exemplos_originais/` | Scripts do começo do projeto |
-| `guia/` | Guia da equipe e o gerador dele |
-| `hardware/` | Projeto da placa no KiCad |
-| `maquete/` | Maquete e o gerador dela |
-| `docs/` | Documentação, fotos e vídeo |
+<p align="center">
+<img src="docs/imagens/saiba_pastas.png" width="700" alt="Pastas do repositório e o que cada uma guarda"><br>
+<sub>Pastas do repositório: o que cada uma guarda</sub>
+</p>
 
 </details>
 
