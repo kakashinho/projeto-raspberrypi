@@ -1,0 +1,14 @@
+[Unit]
+Description=Estacionamento inteligente (main.py: cancelas, sensores, LED e buzzer)
+After=network.target estacionamento-web.service
+Wants=estacionamento-web.service
+
+[Service]
+User=dsm
+WorkingDirectory=/home/dsm/codigos/final
+ExecStart=/usr/bin/python3 -u main.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
