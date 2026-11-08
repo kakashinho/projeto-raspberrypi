@@ -163,9 +163,9 @@ Feita só com papelão, EVA e papel impresso. Ela desmonta em peças planas que 
 
 ---
 
-## 🚀 Como rodar no Raspberry
+## 🚀 Como rodar o sistema
 
-No Raspberry, a partir da pasta `~/codigos/final`:
+Os comandos ficam na pasta [`codigo/sistema/`](codigo/sistema/), e rodam na Raspberry Pi com a placa de interface:
 
 ```bash
 npm install            # só na primeira vez
