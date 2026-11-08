@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.kicad_prl
+*.kicad_pcb-bak
+_*.pdf
+node_modules/
+*.db
