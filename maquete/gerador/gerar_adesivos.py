@@ -69,9 +69,9 @@ def preto_com_texto(F, x, y, w, h, txt, tam):
     F.texto(x + w / 2, y + h / 2 + tam * 0.48, txt, tam, BRANCO, negrito=True, ancora="c")
 
 
-def listra_cancela(F, x, y, pivo_direita):
+def listra_cancela(F, x, y, pivo_direita, comp=None):
     """Adesivo do braço da cancela: blocos vermelhos e brancos a partir da ponta; o lado do eixo fica branco."""
-    comp, h = d.BRACO_E + d.BRACO_ATRAS, d.BRACO_W
+    comp, h = (comp or d.BRACO_E + d.BRACO_ATRAS), d.BRACO_W
     livre = d.BRACO_ATRAS + 8.0            # atrás do eixo + braço plástico do servo
     k = 0
     a = 0.0

@@ -135,12 +135,37 @@ function geoPlaca(pl, o, c, f, t) {
   return geo;
 }
 
+// adesivo como textura na face de fora (a face de cima/baixo da placa; as laterais ficam na cor do papel).
+// A arte vem em PNG com transparência e cobre o contorno todo da peça; por baixo vai a cor do papel.
+function texturaAdesivo(it) {
+  const a = S.texturas[it.tex];
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85, side: THREE.DoubleSide });
+  const img = new Image();
+  img.onload = () => {
+    const px = 5;                                     // pixels por mm
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(a.w * px); cv.height = Math.round(a.h * px);
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = it.cor; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.repeat.set(1 / a.w, 1 / a.h);                 // as coordenadas da face vêm em mm...
+    tex.offset.set(-a.x0 / a.w, -a.y0 / a.h);         // ...e a arte começa no canto (x0, y0) da peça
+    if (a.espelho) { tex.repeat.x = -1 / a.w; tex.offset.x = (a.x0 + a.w) / a.w; }   // parede de trás: a arte é lida de fora
+    tex.anisotropy = 4;
+    m.map = tex; m.needsUpdate = true;
+  };
+  img.src = 'data:image/png;base64,' + a.png;
+  return [m, mat(it.cor)];
+}
+
 for (const it of S.itens) {
   let obj, base = new THREE.Vector3();
   if (it.k === 'placa') {
     const geo = geoPlaca(it.pl, it.o, it.c, it.f, it.t);
     obj = new THREE.Group();
-    obj.add(new THREE.Mesh(geo, mat(it.cor)));
+    obj.add(new THREE.Mesh(geo, it.tex && S.texturas[it.tex] ? texturaAdesivo(it) : mat(it.cor)));
     if (it.t > 0.5) obj.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), linhaMat));
     if (it.fl) {
       const g2 = geoPlaca('xy', it.fl.o, it.fl.c, it.fl.f, it.t);
@@ -152,6 +177,15 @@ for (const it of S.itens) {
     const geo = new THREE.BoxGeometry(Math.abs(b[0] - a[0]), Math.abs(b[2] - a[2]), Math.abs(b[1] - a[1]));
     obj = new THREE.Mesh(geo, mat(it.cor, it.op));
     base = V((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  } else if (it.k === 'plano') {
+    // adesivo plano sobre uma peça (ex.: desenho da placa de interface): a imagem é transparente onde não há nada
+    const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6, transparent: true, alphaTest: 0.02, side: THREE.DoubleSide });
+    new THREE.TextureLoader().load('data:image/png;base64,' + S.texturas[it.tex].png, t => {
+      t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; m.map = t; m.needsUpdate = true;
+    });
+    obj = new THREE.Mesh(new THREE.PlaneGeometry(it.w, it.h), m);
+    obj.rotation.x = -Math.PI / 2;                    // deitado, com a frente da placa para cima
+    base = V(it.p[0], it.p[1], it.p[2]);
   } else {
     const geo = new THREE.CylinderGeometry(it.r, it.r, it.h, 28);
     const p = it.p.slice();
@@ -310,12 +344,12 @@ function passoAnim(agora) {
 }
 
 function vista(nome) {
-  let alvo = V(W / 2, D / 2 - 10, 0), pos;
+  let alvo = V(W / 2 + 20, D / 2 - 40, 0), pos;
   if (nome === 'cima') { alvo = V(W / 2, D / 2, 0); pos = V(W / 2, D / 2 - 1, 720); }
   else if (nome === 'frente') pos = V(W / 2, -470, 110);
   else if (nome === 'baixo') { pos = V(W / 2 + 230, -330, -300); alvo = V(W / 2, D / 2, -50); }
   else if (nome === 'pasta') { pos = V(W / 2 - 90, -300, 300); alvo = V(W / 2, D / 2, 10); }
-  else pos = V(W / 2 - 90, -330, 330);
+  else pos = V(W / 2 - 150, -380, 560);               // de cima e de frente: o estacionamento aparece atrás da guarita
   camera.position.copy(pos); controls.target.copy(alvo); controls.update();
 }
 
@@ -337,6 +371,7 @@ if (params.get('lotado') === '1') document.getElementById('lotado').checked = tr
 lotado(document.getElementById('lotado').checked);
 if (params.has('exp')) { estado.exp = +params.get('exp'); document.getElementById('exp').value = estado.exp * 100; }
 if (params.get('modo') === 'pasta') estado.modo = 'pasta';
+if (params.get('ui') === '0') for (const e of document.querySelectorAll('#ui, #info')) e.style.display = 'none';   // captura limpa
 aplicaVisibilidade(); aplicaExplode(estado.modo === 'pasta' ? 0 : estado.exp);
 setAng('E', +(params.get('angE') || 0)); setAng('S', +(params.get('angS') || 0));
 if (params.get('anim') === '1') anim = { t0: performance.now() / 1000, lot: document.getElementById('lotado').checked };

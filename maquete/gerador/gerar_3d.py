@@ -53,12 +53,13 @@ def tira(comp, alt, cima=(), baixo=()):
 
 
 def placa(cod, plano, origem, contorno, furos=(), cor=PAPELAO, grupo="piso", unid=None,
-          explode=(0, 0, 0), t=T, nome=""):
+          explode=(0, 0, 0), t=T, nome="", tex=None):
     """plano 'xy': (a, b) = (X, Y), espessura para +Z; 'xz': (X, Z), espessura +Y;
-    'yz': (Y, Z), espessura +X. origem = canto (a = 0, b = 0, espessura = 0)."""
+    'yz': (Y, Z), espessura +X. origem = canto (a = 0, b = 0, espessura = 0).
+    tex: nome de um adesivo (ver adesivos_3d) que vai na face de fora da peça."""
     ITENS.append({"k": "placa", "cod": cod, "pl": plano, "o": list(origem), "c": contorno,
                   "f": list(furos), "t": t, "cor": cor, "g": grupo, "u": unid,
-                  "e": list(explode), "n": nome})
+                  "e": list(explode), "n": nome, "tex": tex})
 
 
 def caixa(grupo, cor, a, b, unid=None, explode=(0, 0, 0), op=1.0, nome=""):
@@ -104,7 +105,8 @@ def piso():
                                    [0, ry1], [rx1, ry1], [rx1, ry0], [0, ry0]],
           cor=EVA_PRETO, t=d.EVA, nome="EVA preto")
     # ilha de grama (papel impresso colado no EVA)
-    placa(None, "xy", (0, 0, d.EVA), com_recorte_sensor(d.ENTRADA_X0 - d.FAIXA, d.ILHA_Y1), cor=GRAMA, t=0.3)
+    placa(None, "xy", (0, 0, d.EVA), com_recorte_sensor(d.ENTRADA_X0 - d.FAIXA, d.ILHA_Y1), cor=GRAMA, t=0.3,
+          tex="grama")
     # tiras coladas: guias em cima do piso (prendem a guarita) e travas embaixo (prendem na moldura)
     for x0, y0, x1, y1, nome in d.guias_piso():
         placa("GP", "xy", (0, 0, 0), ret(x0, y0, x1, y1), cor="#9c8f78", nome="Guia: " + nome)
@@ -116,11 +118,11 @@ def piso():
     for cod, tipo, dado in d.marcas_piso():
         z = T if cod in ("C1", "C2") else d.EVA
         if tipo == "faixa":
-            placa(None, "xy", (0, 0, z), ret(*dado), cor=EVA_BRANCO, t=et)
+            placa(None, "xy", (0, 0, z), ret(*dado), cor=EVA_BRANCO, t=et, tex=cod)
         elif tipo == "seta":
-            placa(None, "xy", (0, 0, z), [list(p) for p in dado], cor=EVA_BRANCO, t=et)
+            placa(None, "xy", (0, 0, z), [list(p) for p in dado], cor=EVA_BRANCO, t=et, tex=cod)
         else:
-            placa(None, "xy", (0, 0, z), ret(*dado[1:]), cor="#111111", t=et)
+            placa(None, "xy", (0, 0, z), ret(*dado[1:]), cor="#111111", t=et, tex=cod)
             texto = dado[0] if tipo == "escrita" else str(dado[0])
             cx, cy = (dado[1] + dado[3]) / 2, (dado[2] + dado[4]) / 2
             rotulo(texto, (cx, cy, z + 0.5), 4.0 if tipo == "escrita" else 6.0, fundo=True)
@@ -172,22 +174,22 @@ def guarita():
     Hp = d.PAINEL_H
     cima = [(p0 - gx0, p1 - gx0, Hp - pz), (l0 - gx0, l1 - gx0, Hp - lz)]
     placa("G1", "xz", (gx0, gy0, 0), tira(gx, Hp, cima, [(e0 - gx0, e1 - gx0, ez)]), cor=FACHADA, grupo="painel",
-          explode=(0, -40, 0), nome="Parede da frente (painel)")
+          explode=(0, -40, 0), nome="Parede da frente (painel)", tex="painel")
     # fundo: recortes abertos embaixo para os servos
     baixo = []
     for sx0 in (d.SERVO_E_X0, d.SERVO_S_X0):
         cx = sx0 + d.SERVO_CORPO[0] / 2 - gx0
         baixo.append((cx - d.SERVO_FURO[0] / 2, cx + d.SERVO_FURO[0] / 2, d.SERVO_RECORTE_Z))
     placa("G2", "xz", (gx0, gy1 - T, 0), tira(gx, H, (), baixo), cor=FACHADA, grupo="paredes",
-          explode=(0, 40, 0), nome="Parede do fundo")
+          explode=(0, 40, 0), nome="Parede do fundo", tex="fundo")
     gl = gy - 2 * T                                  # laterais: entre o painel e o fundo
-    for x, ex in ((gx0, -40), (gx1 - T, 40)):
+    for x, ex, tex in ((gx0, -40, "lado_porta"), (gx1 - T, 40, "lado_janela")):
         placa("G3", "yz", (x, gy0 + T, 0), ret(0, 0, gl, H), cor=FACHADA, grupo="paredes",
-              explode=(ex, 0, 0), nome="Parede lateral")
+              explode=(ex, 0, 0), nome="Parede lateral", tex=tex)
     # telhado: retângulo liso + travas coladas por baixo (por dentro das laterais e do fundo)
     o = 3.0
     placa("G4", "xy", (gx0 - o, gy0 - o, H), ret(0, 0, gx + 2 * o, gy + 2 * o), cor=TELHADO,
-          grupo="telhado", explode=(0, 0, 70), nome="Telhado")
+          grupo="telhado", explode=(0, 0, 70), nome="Telhado", tex="telhado")
     for x0, y0, x1, y1, nome in d.travas_telhado():
         placa("GT", "xy", (0, 0, H - T), ret(x0, y0, x1, y1), cor="#6d737b", grupo="telhado",
               explode=(0, 0, 70), nome="Trava do telhado: " + nome)
@@ -213,6 +215,12 @@ def eletronica():
     caixa(g, PRETO, (X(42.4), Y(13.5), zt), (X(93.2), Y(8.5), z_hat0))
     # placa de interface
     caixa(g, HAT, (X(0), Y(50), z_hat0), (X(100), Y(0), d.PLACA_TOPO_Z))
+    # adesivo da placa: o desenho da própria placa (render do KiCad), colado por cima da caixa
+    ITENS.append({"k": "plano", "g": g, "tex": "interface", "p": [X(50), Y(25), d.PLACA_TOPO_Z + 0.1],
+                  "w": 100.0, "h": 50.0, "u": None, "e": [0, 0, 0], "n": "Adesivo da placa"})
+    # etiqueta A PIMACO por cima do desenho: a metade de cima da placa (y do KiCad de 100 a 133,9 mm)
+    ITENS.append({"k": "plano", "g": g, "tex": "etiqueta_A", "p": [X(50), Y(16.95), d.PLACA_TOPO_Z + 0.2],
+                  "w": 100.0, "h": 33.9, "u": None, "e": [0, 0, 0], "n": "Etiqueta A PIMACO"})
     zh = d.PLACA_TOPO_Z
     # potenciômetro (pernas compridas, eixo para a frente)
     pu, pv = d.PECAS["RV1"]
@@ -228,7 +236,7 @@ def eletronica():
     c = b * 0.29
     octo = [[c, 0], [b - c, 0], [b, c], [b, b - c], [b - c, b], [c, b], [0, b - c], [0, c]]
     placa("K1", "xz", (X(pu) - b / 2, ty0 - T, d.POT_EIXO_Z - b / 2), octo, cor="#d23c3c",
-          grupo=g, nome="Botão do pot")
+          grupo=g, nome="Botão do pot", tex="botao")
     # LED RGB (pernas compridas), botão, buzzer, capacitor, conectores dupont
     lu, lv = d.PECAS["D1"]
     for du in (-1.9, -0.6, 0.6, 1.9):
@@ -271,7 +279,7 @@ def totem():
     baixo = [(L1 / 2 + s * d.US_TRANSDUTOR_PASSO / 2 - J / 2, L1 / 2 + s * d.US_TRANSDUTOR_PASSO / 2 + J / 2,
               d.US_Z + J / 2) for s in (-1, 1)]
     placa("S1", "yz", (d.TOTEM_X0, y0, z), tira(L1, H, (), baixo), cor=TOTEM, grupo="paredes",
-          explode=(0, 0, 40), nome="Totem, frente")
+          explode=(0, 0, 40), nome="Totem, frente", tex="totem")
     # laterais: atrás da frente, nas pontas (dobradiça de fita na quina)
     comp = d.TOTEM_X0 - d.TOTEM_FUNDO_X
     for yy in (y0, y0 + L1 - T):
@@ -289,18 +297,7 @@ def cancelas():
         y0 = d.CANCELA_Y - T / 2
         z0 = d.CANCELA_Z - d.BRACO_W / 2
         placa("C1", "xz", (x0, y0, z0), ret(0, 0, total, d.BRACO_W), cor="#f6f6f6", grupo="cancelas",
-              unid=unid, nome="Braço da cancela")
-        # adesivo listrado (só para ver; vai impresso)
-        k = 0
-        a = 8.0
-        while a < comp - 1:
-            if k % 2 == 0:
-                xa = cx + sinal * a
-                xb = cx + sinal * min(a + 7.0, comp)
-                caixa("cancelas", "#d62828", (min(xa, xb), y0 - 0.25, z0 + 0.6), (max(xa, xb), y0, z0 + d.BRACO_W - 0.6),
-                      unid=unid)
-            a += 7.0
-            k += 1
+              unid=unid, nome="Braço da cancela", tex="braco_E" if sinal < 0 else "braco_S")
         # braço plástico do servo, por trás do papelão
         hx0, hx1 = (cx - 15, cx + 3) if sinal < 0 else (cx - 3, cx + 15)
         caixa("cancelas", "#ffffff", (hx0, d.GUARITA_Y1 + 6.8, d.CANCELA_Z - 2.5), (hx1, y0, d.CANCELA_Z + 2.5),
@@ -321,16 +318,16 @@ def carro(unid, cx, y0, cor):
     exl = {-1: (-14, 0, 10), 1: (14, 0, 10)}           # explodida: laterais para fora
     for xf, s in ((cx - Wc / 2, -1), (cx + Wc / 2 - T, 1)):
         placa("CL", "yz", (xf, y0, z), ret(0, 0, L, Hp), cor=cor, grupo=g, unid=unid, explode=exl[s],
-              nome="Carro, lateral")
+              nome="Carro, lateral", tex=f"carro:{cor}:lat")
     Wi = Wc - 2 * T
     exf = {0: (0, -14, 4), 1: (0, 14, 4)}
     for k, yy in enumerate((y0, y0 + L - T)):
         placa("CF", "xz", (cx - Wi / 2, yy, z), ret(0, 0, Wi, Hp), cor=cor, grupo=g, unid=unid, explode=exf[k],
-              nome="Carro, frente/traseira")
+              nome="Carro, frente/traseira", tex=f"carro:{cor}:{'tras' if k == 0 else 'frente'}")
     zt = z + Hp
     ext = (0, 0, 30)
     placa("CT", "xy", (cx - Wc / 2, y0, zt), ret(0, 0, Wc, L), cor=cor, grupo=g, unid=unid, explode=ext,
-          nome="Carro, teto")
+          nome="Carro, teto", tex=f"carro:{cor}:teto")
     # adesivos (só para ver): janelas e rodas nas laterais, vidros no teto, faróis e lanternas
     vid = "#26303b"
     for xf, s in ((cx - Wc / 2, -1), (cx + Wc / 2, 1)):
@@ -402,6 +399,94 @@ def cabos():
     rotulo("furo da rede", (fxr, yr, 30), 6, fundo=True)
 
 
+# ---------------------------------------------------------------- adesivos como textura
+def adesivos_3d():
+    """Etiquetas e adesivos (os mesmos desenhos dos PDFs de impressão) como textura, um PNG com transparência
+    por peça. Cada PNG cobre o retângulo (x0, y0, w, h) da peça em mm: a textura encaixa no contorno dela."""
+    import base64
+    import pymupdf
+    import gerar_adesivos as ga
+    from folha import MM
+
+    saida = {}
+    o = 5.0                                   # margem dentro da página, em mm
+
+    def gera(nome, x0, y0, w, h, desenha, espelho=False):
+        doc = pymupdf.open()
+        F = ga.Folha(doc, w + 2 * o, h + 2 * o)
+        desenha(F, o, o)
+        F.fim()
+        clip = pymupdf.Rect(o * MM, o * MM, (o + w) * MM, (o + h) * MM)
+        pix = doc[0].get_pixmap(clip=clip, dpi=150, alpha=True)
+        saida[nome] = {"png": base64.b64encode(pix.tobytes("png")).decode("ascii"),
+                       "x0": x0, "y0": y0, "w": w, "h": h, "espelho": espelho}
+
+    import os
+    png = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "hardware", "previas",
+                       "placa_topo_adesivo.png")
+    with open(png, "rb") as f:
+        saida["interface"] = {"png": base64.b64encode(f.read()).decode("ascii"),
+                              "x0": 0, "y0": 0, "w": 100.0, "h": 50.0, "espelho": False}
+    # etiqueta A PIMACO (metade de cima da placa, papel branco com a impressão): arte do User.3 do KiCad
+    png_a = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "hardware", "previas",
+                         "etiqueta_A_pimaco.png")
+    with open(png_a, "rb") as f:
+        saida["etiqueta_A"] = {"png": base64.b64encode(f.read()).decode("ascii"),
+                               "x0": 0, "y0": 0, "w": 100.0, "h": 33.9, "espelho": False}
+
+    # guarita (paredes, telhado, totem)
+    gx = d.GUARITA_X1 - d.GUARITA_X0
+    gy = d.GUARITA_Y1 - d.GUARITA_Y0
+    gl = gy - 2 * d.T
+    gera("painel", 0, 0, gx, d.PAINEL_H, ga.adesivo_painel)
+    gera("fundo", 0, 0, gx, d.GUARITA_H, ga.adesivo_fundo, espelho=True)   # colado por fora, visto de trás
+    gera("lado_porta", 0, 0, gl, d.GUARITA_H, lambda F, x, y: ga.adesivo_lado(F, x, y, porta=True))
+    gera("lado_janela", 0, 0, gl, d.GUARITA_H, lambda F, x, y: ga.adesivo_lado(F, x, y, porta=False))
+    gera("totem", 0, 0, d.TOTEM_L, d.TOTEM_H, ga.adesivo_totem)
+    gera("telhado", 0, 0, gx + 6, gy + 6, ga.adesivo_telhado)
+    gera("botao", 0, 0, d.POT_BOTAO, d.POT_BOTAO, ga.adesivo_botao)
+    # ilha de grama e cancelas
+    gera("grama", 0, 0, d.ENTRADA_X0 - d.FAIXA, d.ILHA_Y1, ga.adesivo_grama)
+    for lado, comp, pivo in (("E", d.BRACO_E, True), ("S", d.BRACO_S, False)):
+        total = comp + d.BRACO_ATRAS
+        gera(f"braco_{lado}", 0, 0, total, d.BRACO_W,
+             lambda F, x, y, t=total, p=pivo: ga.listra_cancela(F, x, y, p, comp=t))
+    # carros: teto, laterais, frente e traseira, nas 8 cores
+    wi = d.CARRO_W - 2 * d.T
+    for k, cor in enumerate(CORES):
+        rgb, taxi = ga.hexrgb(cor), k == 1
+        gera(f"carro:{cor}:teto", 0, 0, d.CARRO_W, d.CARRO_L,
+             lambda F, x, y, c=rgb, t=taxi: ga.carro_teto(F, x, y, c, taxi=t))
+        gera(f"carro:{cor}:lat", 0, 0, d.CARRO_L, d.CARRO_PAREDE_H,
+             lambda F, x, y, c=rgb: ga.carro_lado(F, x, y, c, False))
+        gera(f"carro:{cor}:frente", 0, 0, wi, d.CARRO_PAREDE_H,
+             lambda F, x, y, c=rgb: ga.carro_ponta(F, x, y, c, True))
+        gera(f"carro:{cor}:tras", 0, 0, wi, d.CARRO_PAREDE_H,
+             lambda F, x, y, c=rgb: ga.carro_ponta(F, x, y, c, False))
+    # etiquetas PIMACO do piso: faixas e setas brancas, escritas e números pretos
+    for cod, tipo, dado in d.marcas_piso():
+        if tipo == "faixa":
+            x0, y0, x1, y1 = dado
+            gera(cod, x0, y0, x1 - x0, y1 - y0,
+                 lambda F, x, y, w=x1 - x0, h=y1 - y0: F.ret(x, y, x + w, y + h, cor=None, fill=(1, 1, 1), w=0))
+        elif tipo == "seta":
+            x0, y0 = min(p[0] for p in dado), min(p[1] for p in dado)
+            w, h = max(p[0] for p in dado) - x0, max(p[1] for p in dado) - y0
+            gera(cod, x0, y0, w, h,
+                 lambda F, x, y, pts=dado, a=x0, b=y0: F.poly([(x + px - a, y + py - b) for px, py in pts],
+                                                              None, (1, 1, 1), 0))
+        else:
+            x0, y0, x1, y1 = dado[1:]
+            w, h = x1 - x0, y1 - y0
+            if tipo == "escrita":
+                gera(cod, x0, y0, w, h,
+                     lambda F, x, y, t=dado[0], w=w, h=h: ga.preto_com_texto(F, x, y, w, h, t, 3.6))
+            else:
+                gera(cod, x0, y0, w, h,
+                     lambda F, x, y, t=str(dado[0]), w=w, h=h: ga.preto_com_texto(F, x, y, w, h, t, 5.0))
+    return saida
+
+
 # ---------------------------------------------------------------- pasta
 COLADAS = ("P1", "EVA", "B1", "GP", "TP", "GT", "CL", "CF", "CT")   # coladas no piso/telhado ou carros colados
 
@@ -460,6 +545,7 @@ def main(saida):
                   "corredor_y": (d.GUARITA_Y1 + d.VAGAS_Y0) / 2, "cancela_y": d.CANCELA_Y},
         "pasta": {"camadas": n, "base": d.PILHA_BASE + T, "T": T, "interno": list(d.PASTA)},
         "texto": {"versao": "v5", "sensor": [round(c, 1), round(e, 1), round(v, 1)]},
+        "texturas": adesivos_3d(),
     }
     with open("modelo_3d.html", encoding="utf-8") as f:
         html = f.read()
