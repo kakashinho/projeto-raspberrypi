@@ -464,6 +464,22 @@ details.fundo[open]>summary{margin-bottom:10px}
   .t-cab{flex-wrap:wrap}
 }
 @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+@page { size: A4; margin: 12mm 10mm; }
+@media print {
+  *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .fig-card, .cod-card, .aviso, .caixa-entrega, .cartao-t, .fn, tr, figure,
+  .tile, .lig-grid, .zooms, ul.chips, .run-card, .codigo { break-inside: avoid; page-break-inside: avoid; }
+  h2, h3, h4, .t-cab, .tarefa > header { break-after: avoid; page-break-after: avoid; }
+  .copiar, .btn-placa { display: none !important; }
+  .tarefa[hidden], .tarefa[hidden] * { display: revert !important; }
+  .tarefa[hidden] { display: block !important; }
+  .abas, .dica-rolar { display: none !important; }
+  pre, .term, pre code { white-space: pre-wrap !important; overflow: visible !important; word-break: normal !important; overflow-wrap: break-word !important; font-size: 7.4pt !important; }
+  .baixo { break-inside: auto; }
+  .t-cab { flex-wrap: nowrap !important; } .t-cab > div { flex: 1 1 auto !important; } .t-cab .cr { flex: none !important; }
+  .t-cab .btn-placa.mini { margin-left: 0 !important; }
+  .estado-cores { display: flex !important; flex-wrap: wrap !important; } .estado-cores i { display: inline-block !important; width: 14px !important; height: 14px !important; }
+}
 </style>
 </head>
 <body>
@@ -617,8 +633,9 @@ Resposta de 192.168.0.153: bytes=32 tempo=9ms TTL=64</pre>
     <h3>3. Sistema final: liga sozinho e reinicia se cair</h3>
     <p>Quando o <code>main.py</code> estiver pronto, ele roda como serviço do sistema. Só ele fica dono dos pinos. Os módulos (<code>cancelas.py</code>, <code>presenca.py</code>...) <b>não rodam separados</b>: o <code>main.py</code> os importa.</p>
     <div class="codigo"><div class="cod-cab"><span>/etc/systemd/system/estacionamento.service</span><button class="copiar" type="button">Copiar</button></div><pre><code>[Unit]
-Description=Estacionamento inteligente (main.py)
-After=network.target
+Description=Estacionamento inteligente (main.py: cancelas, sensores, LED e buzzer)
+After=network.target estacionamento-web.service
+Wants=estacionamento-web.service
 
 [Service]
 User=dsm
@@ -658,10 +675,10 @@ WantedBy=multi-user.target</code></pre></div>
       <tr><td>Um módulo roda código ao ser importado (um <code>while True</code> solto).</td><td>Módulo só tem funções. O teste vai dentro de <code>if __name__ == "__main__":</code>.</td></tr>
       <tr><td>Duas bibliotecas de GPIO no mesmo programa (<code>RPi.GPIO</code> do potenciômetro e <code>gpiozero</code> das outras peças).</td><td>No sistema final, ninguém chama <code>GPIO.cleanup()</code> sem argumentos. Use <code>GPIO.cleanup([12, 25])</code>. Se der erro na integração, converta o pot para <code>gpiozero</code>.</td></tr>
       <tr><td>O callback do botão roda em outra linha de execução e mexe na cancela ao mesmo tempo que o loop.</td><td>O callback só marca uma flag. Quem mexe na cancela é o loop do <code>main.py</code>.</td></tr>
-      <tr><td>Manual e automático mexendo no servo 1 ao mesmo tempo.</td><td>O manual tem prioridade: enquanto ativo, o sensor é ignorado. Ao voltar ao automático, feche a cancela.</td></tr>
+      <tr><td>Modo manual ligado e saída pelo painel ao mesmo tempo.</td><td>As duas mexem na cancela de saída. Desligue o modo manual (botão) antes de liberar a saída. Enquanto o manual estiver ligado, o sensor de entrada é ignorado.</td></tr>
       <tr><td>Funções demoradas (música, leitura do DHT11, medir o pot) param o loop principal.</td><td>Músicas curtas. DHT11 só a cada 30 s e fora de abrir ou fechar a cancela. Medir o pot só no modo manual.</td></tr>
       <tr><td><code>input()</code> ou arquivo em pasta relativa dentro do serviço (que não tem teclado).</td><td>A calibração do pot é feita à mão antes (<code>python3 manual.py</code>) e o arquivo fica ao lado do módulo. Sem ele, <code>posicao_pot()</code> devolve <code>None</code>.</td></tr>
-      <tr><td>Os servos tremem quando LED e buzzer usam PWM junto no mesmo programa.</td><td>Ligue o pigpio para todas as peças de uma vez, em <code>pinos.py</code> (as 3 linhas comentadas lá).</td></tr>
+      <tr><td>Os servos tremem quando LED e buzzer usam PWM junto no mesmo programa.</td><td>Chame <code>soltar(qual)</code> quando a cancela chegar à posição. Se continuar tremendo, confira a alimentação (JP1 e J7).</td></tr>
       <tr><td>Hora errada no Raspberry (sem internet): o gráfico da semana sai errado.</td><td>Confira com <code>date</code> e ajuste o fuso e a hora (veja a tarefa 7).</td></tr>
       <tr><td>Ao ligar o Pi, o LED pode acender por um instante e o buzzer apitar baixinho.</td><td>É o estado dos pinos antes do programa começar. É normal.</td></tr>
     </tbody></table></div>
@@ -698,7 +715,7 @@ WantedBy=multi-user.target</code></pre></div>
       </div>
     </div>
 
-<details class="porque"><summary><span class="q">?</span><span>Como o servo funciona por dentro <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Pulso</b>: um sinal que liga por um instante e desliga, como um toque rápido numa campainha.</li><li><b>Realimentação</b>: olhar o resultado e corrigir, como girar o registro do chuveiro até a água ficar morna.</li><li><b>Corrente</b>: a quantidade de eletricidade passando. Mede-se em ampères (A). 1 mA é um milésimo de ampère.</li></ul></div><h4>Em palavras simples</h4><p>O servo é um motorzinho que sabe onde está. Você pede um ângulo, ele gira até chegar e para. Pense no chuveiro: você mexe no registro, sente a temperatura e corrige até ficar certo. O servo faz isso sozinho, muitas vezes por segundo.</p><h4>O que acontece, passo a passo</h4><ol><li>O Raspberry manda 50 pulsos por segundo no fio laranja. A <b>largura</b> de cada pulso é o pedido: pulso curto, ângulo pequeno; pulso longo, ângulo grande.</li><li>Uma plaquinha dentro do servo lê esse pedido.</li><li>Presa ao eixo existe uma peça (um potenciômetro, que você vai conhecer na tarefa 3) que informa o ângulo em que o eixo está de verdade.</li><li>A plaquinha compara o pedido com o ângulo real. Se são diferentes, liga o motor para o lado certo.</li><li>Quando ficam iguais, desliga o motor e segura a posição.</li></ol><div class="rolar"><svg class="esq" viewBox="0 0 640 220" role="img" aria-label="O servo compara o pulso pedido com a posição real lida por um potenciômetro interno e liga o motor até o erro zerar"><defs><marker id="u18m7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs><rect class="e-caixa" x="8" y="34" width="118" height="56" rx="8"/><text class="e-txt-b" x="67.0" y="56" text-anchor="middle">Pulso do Pi</text><text class="e-mut" x="67.0" y="74" text-anchor="middle">0,5 a 2,5 ms</text><circle class="e-comp" cx="182" cy="62" r="26"/><text class="e-txt-b" x="182" y="67" text-anchor="middle">erro</text><text class="e-mut" x="182" y="108" text-anchor="middle">pedido − posição real</text><rect class="e-caixa" x="238" y="34" width="100" height="56" rx="8"/><text class="e-txt-b" x="288.0" y="56" text-anchor="middle">Motor</text><text class="e-mut" x="288.0" y="74" text-anchor="middle">corrente contínua</text><rect class="e-caixa" x="358" y="34" width="100" height="56" rx="8"/><text class="e-txt-b" x="408.0" y="56" text-anchor="middle">Engrenagens</text><text class="e-mut" x="408.0" y="74" text-anchor="middle">mais força, menos giro</text><rect class="e-caixa" x="478" y="34" width="150" height="56" rx="8"/><text class="e-txt-b" x="553.0" y="56" text-anchor="middle">Eixo e braço</text><text class="e-mut" x="553.0" y="74" text-anchor="middle">a cancela</text><line class="e-fio" x1="126" y1="62" x2="154" y2="62" marker-end="url(#u18m7)"/><line class="e-fio" x1="208" y1="62" x2="236" y2="62" marker-end="url(#u18m7)"/><line class="e-fio" x1="338" y1="62" x2="356" y2="62" marker-end="url(#u18m7)"/><line class="e-fio" x1="458" y1="62" x2="476" y2="62" marker-end="url(#u18m7)"/><rect class="e-caixa" x="478" y="150" width="150" height="56" rx="8"/><text class="e-txt-b" x="553.0" y="172" text-anchor="middle">Potenciômetro interno</text><text class="e-mut" x="553.0" y="190" text-anchor="middle">lê o ângulo do eixo</text><line class="e-fio" x1="553" y1="90" x2="553" y2="148" marker-end="url(#u18m7)"/><text class="e-mut" x="561" y="124" text-anchor="start">gira junto</text><path class="e-fio" d="M478,178 H182 V90" marker-end="url(#u18m7)"/><text class="e-txt" x="330" y="170" text-anchor="start">realimentação: a posição real volta para comparar</text><text class="e-mut" x="182" y="22" text-anchor="middle">se erro ≠ 0, liga o motor; se erro = 0, para</text></svg></div><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Largura vira ângulo.</b> No nosso código, 0,5 ms é 0°, 1,5 ms é 90° e 2,5 ms é 180° (1 ms é um milésimo de segundo). São 2 ms para 180°, cerca de <b>11 µs por grau</b> (1 µs é um milionésimo de segundo).</li><li><b>Engrenagens.</b> Trocam velocidade por força: o motor gira rápido e fraco, e o eixo gira devagar e forte. É por isso que o servo consegue levantar uma cancela.</li><li><b>Por que treme.</b> No Raspberry o pulso é gerado por software, e o sistema operacional atrasa alguns microssegundos de vez em quando. 30 µs de atraso são quase 3°. O pigpio gera o pulso por hardware, sem esse atraso.</li><li><b>Por que o Pi reinicia.</b> Parado, o servo gasta pouca corrente. Ao partir ou ao ser forçado, o motor puxa algumas centenas de mA (o SG90 chega perto de 650 mA travado). A fonte de 5 V do Pi cai e ele reinicia. Uma fonte externa resolve.</li></ul></details></div></details>
+<details class="porque"><summary><span class="q">?</span><span>Como o servo funciona por dentro <small>(saiba mais)</small></span></summary><div class="porque-corpo"><div class="palavras"><b>Palavras novas</b><ul><li><b>Pulso</b>: um sinal que liga por um instante e desliga, como um toque rápido numa campainha.</li><li><b>Realimentação</b>: olhar o resultado e corrigir, como girar o registro do chuveiro até a água ficar morna.</li><li><b>Corrente</b>: a quantidade de eletricidade passando. Mede-se em ampères (A). 1 mA é um milésimo de ampère.</li></ul></div><h4>Em palavras simples</h4><p>O servo é um motorzinho que sabe onde está. Você pede um ângulo, ele gira até chegar e para. Pense no chuveiro: você mexe no registro, sente a temperatura e corrige até ficar certo. O servo faz isso sozinho, muitas vezes por segundo.</p><h4>O que acontece, passo a passo</h4><ol><li>O Raspberry manda 50 pulsos por segundo no fio laranja. A <b>largura</b> de cada pulso é o pedido: pulso curto, ângulo pequeno; pulso longo, ângulo grande.</li><li>Uma plaquinha dentro do servo lê esse pedido.</li><li>Presa ao eixo existe uma peça (um potenciômetro, que você vai conhecer na tarefa 3) que informa o ângulo em que o eixo está de verdade.</li><li>A plaquinha compara o pedido com o ângulo real. Se são diferentes, liga o motor para o lado certo.</li><li>Quando ficam iguais, desliga o motor e segura a posição.</li></ol><div class="rolar"><svg class="esq" viewBox="0 0 640 220" role="img" aria-label="O servo compara o pulso pedido com a posição real lida por um potenciômetro interno e liga o motor até o erro zerar"><defs><marker id="u18m7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs><rect class="e-caixa" x="8" y="34" width="118" height="56" rx="8"/><text class="e-txt-b" x="67.0" y="56" text-anchor="middle">Pulso do Pi</text><text class="e-mut" x="67.0" y="74" text-anchor="middle">0,5 a 2,5 ms</text><circle class="e-comp" cx="182" cy="62" r="26"/><text class="e-txt-b" x="182" y="67" text-anchor="middle">erro</text><text class="e-mut" x="170" y="108" text-anchor="end">pedido − posição real</text><rect class="e-caixa" x="238" y="34" width="100" height="56" rx="8"/><text class="e-txt-b" x="288.0" y="56" text-anchor="middle">Motor</text><text class="e-mut" x="288.0" y="74" text-anchor="middle">elétrico, CC</text><rect class="e-caixa" x="358" y="34" width="100" height="56" rx="8"/><text class="e-txt-b" x="408.0" y="56" text-anchor="middle">Engrenagens</text><text class="e-mut" x="408.0" y="74" text-anchor="middle">mais força</text><rect class="e-caixa" x="478" y="34" width="150" height="56" rx="8"/><text class="e-txt-b" x="553.0" y="56" text-anchor="middle">Eixo e braço</text><text class="e-mut" x="553.0" y="74" text-anchor="middle">a cancela</text><line class="e-fio" x1="126" y1="62" x2="154" y2="62" marker-end="url(#u18m7)"/><line class="e-fio" x1="208" y1="62" x2="236" y2="62" marker-end="url(#u18m7)"/><line class="e-fio" x1="338" y1="62" x2="356" y2="62" marker-end="url(#u18m7)"/><line class="e-fio" x1="458" y1="62" x2="476" y2="62" marker-end="url(#u18m7)"/><rect class="e-caixa" x="478" y="150" width="150" height="56" rx="8"/><text class="e-txt-b" x="553.0" y="172" text-anchor="middle">Potenciômetro</text><text class="e-mut" x="553.0" y="190" text-anchor="middle">lê o ângulo do eixo</text><line class="e-fio" x1="553" y1="90" x2="553" y2="148" marker-end="url(#u18m7)"/><text class="e-mut" x="561" y="124" text-anchor="start">gira junto</text><path class="e-fio" d="M478,178 H182 V90" marker-end="url(#u18m7)"/><text class="e-txt" x="330" y="170" text-anchor="middle">realimentação: volta para comparar</text><text class="e-mut" x="182" y="22" text-anchor="middle">se erro ≠ 0, liga o motor; se erro = 0, para</text></svg></div><details class="fundo"><summary>Quer ir mais fundo? Os detalhes técnicos</summary><ul><li><b>Largura vira ângulo.</b> No nosso código, 0,5 ms é 0°, 1,5 ms é 90° e 2,5 ms é 180° (1 ms é um milésimo de segundo). São 2 ms para 180°, cerca de <b>11 µs por grau</b> (1 µs é um milionésimo de segundo).</li><li><b>Engrenagens.</b> Trocam velocidade por força: o motor gira rápido e fraco, e o eixo gira devagar e forte. É por isso que o servo consegue levantar uma cancela.</li><li><b>Por que treme.</b> No Raspberry o pulso é gerado por software, e o sistema operacional atrasa alguns microssegundos de vez em quando. 30 µs de atraso são quase 3°. O código final gera o pulso por software (RPi.GPIO), então esse atraso pode aparecer. O pigpio geraria o pulso por hardware, sem esse atraso, mas o projeto final não o usa.</li><li><b>Por que o Pi reinicia.</b> Parado, o servo gasta pouca corrente. Ao partir ou ao ser forçado, o motor puxa algumas centenas de mA (o SG90 chega perto de 650 mA travado). A fonte de 5 V do Pi cai e ele reinicia. Uma fonte externa resolve.</li></ul></details></div></details>
 
     <div class="bloco">
       <h4>Ligação e lugar na placa</h4>
@@ -710,41 +727,55 @@ WantedBy=multi-user.target</code></pre></div>
 
     <div class="bloco">
       <h4>Código de partida</h4>
-      <div class="codigo"><div class="cod-cab"><span>teste_servo.py</span><button class="copiar" type="button">Copiar</button></div><pre><code>from gpiozero import AngularServo
+      <div class="codigo"><div class="cod-cab"><span>teste_servo.py</span><button class="copiar" type="button">Copiar</button></div><pre><code>import RPi.GPIO as GPIO
 from time import sleep
 
-def novo_servo(gpio):
-    # SG90: pulso de 0,5 a 2,5 ms cobre os 180 graus
-    return AngularServo(gpio, min_angle=0, max_angle=180,
-                        min_pulse_width=0.0005, max_pulse_width=0.0025)
+# Mesma base do cancelas.py final: PWM de 50 Hz com RPi.GPIO
+PINOS = {"entrada": 13, "saida": 26}   # J2 e J3
 
-entrada = novo_servo(13)   # J2
-saida = novo_servo(26)     # J3
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+for pino in PINOS.values():
+    GPIO.setup(pino, GPIO.OUT)
 
-entrada.angle = 0          # cancela fechada
-sleep(1)
-entrada.angle = 90         # cancela aberta
-sleep(1)
-entrada.angle = 0
-sleep(1)
-entrada.detach()           # solta o servo: ele para de tremer</code></pre></div>
+pwms = {nome: GPIO.PWM(pino, 50) for nome, pino in PINOS.items()}
+for pwm in pwms.values():
+    pwm.start(0)
+
+def duty(graus):
+    # SG90: pulso de 0,5 a 2,5 ms cobre os 180 graus (20 ms por ciclo)
+    pulso_ms = 0.5 + (graus / 180.0) * 2.0
+    return pulso_ms / 20.0 * 100.0
+
+def angulo(qual, graus):
+    pwms[qual].ChangeDutyCycle(duty(graus))
+    sleep(0.5)
+
+angulo("entrada", 0)       # cancela fechada
+angulo("entrada", 90)      # cancela aberta
+angulo("entrada", 0)
+pwms["entrada"].ChangeDutyCycle(0)   # solta o servo: ele para de tremer
+
+for pwm in pwms.values():
+    pwm.stop()
+GPIO.cleanup(list(PINOS.values()))</code></pre></div>
     </div>
 
     <div class="baixo">
       <div class="bloco"><h4>Missão</h4><ul class="check">
-        <li><label><input type="checkbox" data-k="1-0"><span>A cancela fecha em 0° e abre em 90°. Ajuste para o ângulo real.</span></label></li>
+        <li><label><input type="checkbox" data-k="1-0"><span>A entrada fecha em 0° e abre em 90°. A saída é espelhada: fecha em 90° e abre em 0°. Ajuste para o ângulo real.</span></label></li>
         <li><label><input type="checkbox" data-k="1-1"><span>Mova devagar: 5° por vez, com <code>sleep(0.02)</code>.</span></label></li>
         <li><label><input type="checkbox" data-k="1-2"><span>Crie o <code>cancelas.py</code> com as funções ao lado.</span></label></li>
       </ul></div>
       <div class="caixa-entrega"><h4>Sua entrega</h4>
         <b><code>cancelas.py</code></b>
-<div class="fn"><code>abrir(qual)</code><span>põe a cancela a 90°</span></div><div class="fn"><code>fechar(qual)</code><span>põe a cancela a 0°</span></div><div class="fn"><code>angulo(qual, graus)</code><span>vai para o ângulo pedido, de 0 a 180</span></div><div class="fn"><code>soltar()</code><span>solta os servos (param de tremer)</span></div><p class="liga">“qual” é <code>"entrada"</code> ou <code>"saida"</code>.</p>
+<div class="fn"><code>abrir(qual)</code><span>põe a cancela a 90°</span></div><div class="fn"><code>fechar(qual)</code><span>põe a cancela a 0°</span></div><div class="fn"><code>angulo(qual, graus)</code><span>vai para o ângulo pedido, de 0 a 180</span></div><div class="fn"><code>soltar(qual)</code><span>para o sinal do servo (param de tremer). Sem “qual”, para os dois</span></div><p class="liga">“qual” é <code>"entrada"</code> ou <code>"saida"</code>.</p>
         <p class="liga">Quem usa: <a href="#tarefa-6">6 Lógica</a>, <a href="#tarefa-3">3 Guarita</a>.</p>
       </div>
       <div class="bloco"><h4>Cuidado</h4><ul>
-        <li><b>Servo tremendo?</b> Use o pigpio: <code>sudo apt install pigpio python3-pigpio</code>, <code>sudo systemctl enable --now pigpiod</code> e, no código, <code>Device.pin_factory = PiGPIOFactory()</code>.</li>
+        <li><b>Servo tremendo?</b> Chame <code>soltar(qual)</code> quando a cancela chegar à posição. Se continuar, confira a alimentação (JP1 e J7).</li>
         <li><b>Pi reinicia quando o servo mexe?</b> Jumper JP1 em EXT e fonte no J7.</li>
-        <li><b>Só o <code>cancelas.py</code> cria os servos.</b> Nenhum outro módulo pode criar <code>AngularServo(13)</code> ou <code>(26)</code>: dois donos da mesma peça dão erro. Guarde o ângulo aberto e o fechado de cada cancela separadamente, porque a montagem pode ser espelhada.</li>
+        <li><b>Só o <code>cancelas.py</code> cria os servos.</b> Nenhum outro módulo pode criar PWM nos pinos <code>13</code> ou <code>26</code>: dois donos da mesma peça dão erro. Guarde o ângulo aberto e o fechado de cada cancela separadamente, porque a montagem pode ser espelhada.</li>
       </ul></div>
     </div>
   </article>
@@ -778,14 +809,22 @@ entrada.detach()           # solta o servo: ele para de tremer</code></pre></div
     <div class="bloco">
       <h4>Código de partida</h4>
       <div class="codigo"><div class="cod-cab"><span>teste_distancia.py</span><button class="copiar" type="button">Copiar</button></div><pre><code>from gpiozero import DistanceSensor
+import statistics
 from time import sleep
 
-# Atenção: na nossa placa TRIG = GPIO23 e ECHO = GPIO24
-sensor = DistanceSensor(echo=24, trigger=23, max_distance=2)
+# Mesma configuração do presenca.py do sistema final
+sensor = DistanceSensor(echo=24, trigger=23, max_distance=2, queue_len=1)
+
+def distancia_cm():
+    # mediana de 5 leituras: tira os picos falsos
+    leituras = []
+    for _ in range(5):
+        leituras.append(sensor.distance * 100)
+        sleep(0.02)
+    return statistics.median(leituras)
 
 while True:
-    cm = sensor.distance * 100
-    print(f"{cm:5.1f} cm")
+    print(f"{distancia_cm():5.1f} cm")
     sleep(0.3)</code></pre></div>
     </div>
 
@@ -811,13 +850,13 @@ while True:
   </article>
 
   <article class="tarefa k3" id="tarefa-3" data-n="3">
-    <header class="t-cab"><span class="cr">3</span><div><h3>Guarita manual</h3><p>Potenciômetro e botão: o porteiro controla a cancela de entrada na mão.</p></div><a class="btn-placa mini" href="#placa" data-foco="3" title="Abre o mapa da placa e destaca a área e os pinos desta tarefa"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver na placa</span></a><span class="prog" data-prog="3"></span></header>
+    <header class="t-cab"><span class="cr">3</span><div><h3>Guarita manual</h3><p>Potenciômetro e botão: o porteiro controla a cancela de saída na mão.</p></div><a class="btn-placa mini" href="#placa" data-foco="3" title="Abre o mapa da placa e destaca a área e os pinos desta tarefa"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 9V6.5M12 17.5V15M9 12H6.5M17.5 12H15M7.5 4v2M16.5 4v2M7.5 20v-2M16.5 20v-2"/></svg><span>Ver na placa</span></a><span class="prog" data-prog="3"></span></header>
     <ul class="tags"><li>ler “analógico” com capacitor</li><li>botão com pull-up</li></ul>
 
     <div class="intro">
       <div class="tile"><svg class="peca-img" viewBox="0 0 260 176" role="img" aria-label="Potenciômetro de 10 quilo-ohms com três terminais; o do meio é o cursor"><rect x="114" y="8" width="32" height="46" rx="3" fill="#2a2a2a"/><line x1="118" y1="10" x2="118" y2="52" stroke="#4a4a4a" stroke-width="1"/><line x1="123" y1="10" x2="123" y2="52" stroke="#4a4a4a" stroke-width="1"/><line x1="128" y1="10" x2="128" y2="52" stroke="#4a4a4a" stroke-width="1"/><line x1="133" y1="10" x2="133" y2="52" stroke="#4a4a4a" stroke-width="1"/><line x1="138" y1="10" x2="138" y2="52" stroke="#4a4a4a" stroke-width="1"/><line x1="143" y1="10" x2="143" y2="52" stroke="#4a4a4a" stroke-width="1"/><rect x="98" y="54" width="64" height="9" rx="2" fill="#7b8084"/><rect x="68" y="63" width="124" height="50" rx="5" fill="#2f6ca3"/><text x="130" y="94" fill="#fff" font-size="15" font-weight="700" text-anchor="middle" class="mono-img">10K</text><rect x="93" y="113" width="6" height="30" fill="#b8bcc0"/><text class="mono-img ink" x="96" y="160" font-size="11" text-anchor="middle">1</text><rect x="127" y="113" width="6" height="30" fill="#b8bcc0"/><text class="mono-img ink" x="130" y="160" font-size="11" text-anchor="middle">2</text><rect x="161" y="113" width="6" height="30" fill="#b8bcc0"/><text class="mono-img ink" x="164" y="160" font-size="11" text-anchor="middle">3</text><text class="mono-img ink" x="130" y="173" font-size="9" text-anchor="middle">2 = cursor (o do meio)</text></svg><svg class="peca-img" viewBox="0 0 260 176" role="img" aria-label="Botão táctil de quatro pernas; ligamos GPIO5 e GND em pernas opostas"><rect x="92" y="24" width="76" height="76" rx="8" fill="#2b2b2b"/><rect x="98" y="30" width="64" height="64" rx="6" fill="#3a3a3a"/><circle cx="130" cy="62" r="23" fill="#5a3d34" stroke="#7a5a4e" stroke-width="2"/><circle cx="104" cy="36" r="3.5" fill="#8a8a8a"/><circle cx="156" cy="36" r="3.5" fill="#8a8a8a"/><circle cx="104" cy="88" r="3.5" fill="#8a8a8a"/><circle cx="156" cy="88" r="3.5" fill="#8a8a8a"/><rect x="80" y="38" width="12" height="8" fill="#b8bcc0"/><rect x="168" y="38" width="12" height="8" fill="#e0a81c"/><rect x="80" y="78" width="12" height="8" fill="#e0a81c"/><rect x="168" y="78" width="12" height="8" fill="#b8bcc0"/><text class="mono-img ink" x="188" y="46" font-size="10" text-anchor="start">GPIO5</text><text class="mono-img ink" x="74" y="86" font-size="10" text-anchor="end">GND</text><text class="mono-img ink" x="130" y="126" font-size="10" text-anchor="middle">use 2 pernas em diagonal</text></svg></div>
       <div class="txt">
-        <p class="fraseg">O <b>potenciômetro</b> define a <b>posição</b> da cancela (0 a 100 vira 0° a 90°). O <b>botão</b> abre ou fecha de uma vez.</p>
+        <p class="fraseg">O <b>potenciômetro</b> define a <b>posição</b> da cancela de saída (0 a 100 vira de fechada a aberta). O <b>botão</b> liga e desliga o modo manual.</p>
         <div class="fig-card"><h4>Como o potenciômetro é lido (o Pi não tem entrada analógica)</h4><div class="figs dois peq"><figure><div class="rolar"><svg class="esq rc" viewBox="0 0 470 250" role="img" aria-label="Circuito: o GPIO12 carrega o capacitor C1 por R2; o potenciômetro, desenhado como retângulo com seta, liga o cursor e a ponta 3 ao ponto X e a ponta 1 ao GPIO25 por R1"><defs><marker id="u7m8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs><text class="e-gpio" x="8" y="64" text-anchor="start">GPIO12</text><text class="e-mut" x="8" y="81" text-anchor="start">carrega</text><path class="e-fio" d="M64,70 L88,70"/><rect class="e-comp" x="88.0" y="58.0" width="64" height="24"/><text class="e-mono" x="120" y="46" text-anchor="middle">R2  10 kΩ</text><path class="e-fio" d="M152,70 L402,70 L402,130 L386,130"/><circle class="e-dot" cx="190" cy="70" r="3.4"/><circle class="e-dot" cx="345" cy="70" r="3.4"/><text class="e-ponto-x" x="190" y="58" text-anchor="middle">X</text><path class="e-fio" d="M190,70 L190,112"/><path class="e-fio" d="M168,112 H212 M168,123 H212"/><path class="e-fio" d="M190,123 L190,152"/><path class="e-fio" d="M190,152 v8 M177,160 h26 M182,165 h16 M187,170 h6"/><text class="e-mono" x="158" y="122" text-anchor="end">C1  100 nF</text><rect class="e-comp" x="304.0" y="116.0" width="82" height="28"/><line class="e-fio" x1="345" y1="70" x2="345" y2="114" marker-end="url(#u7m8)"/><text class="e-mono" x="334" y="98" text-anchor="end">2 · cursor</text><text class="e-pino-pot" x="295" y="121" text-anchor="middle">1</text><text class="e-pino-pot" x="394" y="121" text-anchor="middle">3</text><text class="e-mono" x="302" y="170" text-anchor="start">POTENCIÔMETRO  10 kΩ</text><path class="e-fio" d="M304,130 L288,130 L288,222 L202,222"/><rect class="e-comp" x="138.0" y="210.0" width="64" height="24"/><text class="e-mono" x="170" y="198" text-anchor="middle">R1  10 kΩ</text><path class="e-fio" d="M138,222 L64,222"/><text class="e-gpio" x="8" y="216" text-anchor="start">GPIO25</text><text class="e-mut" x="8" y="233" text-anchor="start">lê o tempo</text></svg></div><figcaption><b>1. O circuito.</b> O ponto <b>X</b> é onde se encontram R2, C1, o cursor (2) e a ponta 3. O GPIO12 carrega o capacitor por R2. O GPIO25 lê o resultado por R1 e pela ponta 1 do potenciômetro.</figcaption></figure><figure><div class="rolar"><svg class="esq rc" viewBox="0 0 470 270" role="img" aria-label="A tensão no ponto X sobe com o tempo; o potenciômetro muda quanto tempo ela leva para cruzar o limiar do GPIO"><defs><marker id="u8m9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs><path class="e-eixo" d="M56,30 V206 H444" fill="none"/><text class="e-mut" x="48" y="40" text-anchor="start">tensão no ponto X</text><text class="e-mut" x="444" y="224" text-anchor="end">tempo</text><text class="e-mut" x="48" y="210" text-anchor="end">0</text><text class="e-mut" x="48" y="58" text-anchor="end">3,3 V</text><line class="e-lim" x1="56" y1="122.0" x2="436" y2="122.0"/><text class="e-mut" x="436" y="142.0" text-anchor="end">limiar: acima daqui o GPIO lê “1”</text><path class="e-pulso" d="M56,206.0 L61,196.4 L66,187.4 L71,178.8 L76,170.8 L81,163.2 L86,156.0 L91,149.3 L96,142.9 L101,136.9 L106,131.3 L111,126.0 L116,120.9 L121,116.2 L126,111.7 L131,107.5 L136,103.5 L141,99.8 L146,96.3 L151,92.9 L156,89.8 L161,86.8 L166,84.1 L171,81.4 L176,78.9 L181,76.6 L186,74.4 L191,72.3 L196,70.4 L201,68.5 L206,66.8 L211,65.1 L216,63.6 L221,62.1 L226,60.7 L231,59.4 L236,58.2 L241,57.1 L246,56.0 L251,54.9 L256,54.0 L261,53.1 L266,52.2 L271,51.4 L276,50.6 L281,49.9 L286,49.2 L291,48.6 L296,48.0 L301,47.4 L306,46.9 L311,46.4 L316,45.9 L321,45.4 L326,45.0 L331,44.6 L336,44.2 L341,43.9 L346,43.5 L351,43.2 L356,42.9 L361,42.6 L366,42.4 L371,42.1 L376,41.9 L381,41.7 L386,41.5 L391,41.3 L396,41.1 L401,40.9 L406,40.7 L411,40.6 L416,40.4 L421,40.3 L426,40.2 L431,40.0 L436,39.9"/><path class="e-curva2" d="M56,206.0 L61,201.1 L66,196.4 L71,191.8 L76,187.4 L81,183.0 L86,178.8 L91,174.7 L96,170.8 L101,166.9 L106,163.2 L111,159.6 L116,156.0 L121,152.6 L126,149.3 L131,146.1 L136,142.9 L141,139.9 L146,136.9 L151,134.1 L156,131.3 L161,128.6 L166,126.0 L171,123.4 L176,120.9 L181,118.5 L186,116.2 L191,113.9 L196,111.7 L201,109.6 L206,107.5 L211,105.5 L216,103.5 L221,101.6 L226,99.8 L231,98.0 L236,96.3 L241,94.6 L246,92.9 L251,91.4 L256,89.8 L261,88.3 L266,86.8 L271,85.4 L276,84.1 L281,82.7 L286,81.4 L291,80.2 L296,78.9 L301,77.8 L306,76.6 L311,75.5 L316,74.4 L321,73.3 L326,72.3 L331,71.3 L336,70.4 L341,69.4 L346,68.5 L351,67.6 L356,66.8 L361,65.9 L366,65.1 L371,64.3 L376,63.6 L381,62.8 L386,62.1 L391,61.4 L396,60.7 L401,60.1 L406,59.4 L411,58.8 L416,58.2 L421,57.6 L426,57.1 L431,56.5 L436,56.0"/><line class="e-lim" x1="114.9" y1="122.0" x2="114.9" y2="206"/><text class="e-mono-b" x="114.9" y="223" text-anchor="middle">t1</text><line class="e-lim" x1="173.8" y1="122.0" x2="173.8" y2="206"/><text class="e-mono-b" x="173.8" y="223" text-anchor="middle">t2</text><line class="e-fio" x1="114.9" y1="236" x2="173.8" y2="236" marker-start="url(#u8m9)" marker-end="url(#u8m9)"/><text class="e-txt" x="144.35750000000002" y="252" text-anchor="middle">o pot muda esse intervalo</text><line class="e-pulso" x1="246" y1="154" x2="280" y2="154"/><text class="e-txt" x="288" y="158" text-anchor="start">pot em um extremo</text><line class="e-curva2" x1="246" y1="174" x2="280" y2="174"/><text class="e-txt" x="288" y="178" text-anchor="start">pot no outro extremo</text></svg></div><figcaption><b>2. O que o código mede.</b> O capacitor carrega aos poucos. O código cronometra quanto tempo a tensão leva para passar do limiar. Girar o potenciômetro muda esse tempo, e o tempo vira a posição de 0 a 100.</figcaption></figure></div></div>
       </div>
     </div>
@@ -884,7 +923,7 @@ if __name__ == "__main__":
       <div class="bloco"><h4>Missão</h4><ul class="check">
         <li><label><input type="checkbox" data-k="3-0"><span>Rode o <code>calibracao_pot2.py</code> e veja a posição ir de 0 a 100.</span></label></li>
         <li><label><input type="checkbox" data-k="3-1"><span>Salve o mínimo e o máximo em arquivo, para não recalibrar toda vez.</span></label></li>
-        <li><label><input type="checkbox" data-k="3-2"><span>Leia o botão com <code>when_pressed</code>.</span></label></li>
+        <li><label><input type="checkbox" data-k="3-2"><span>Registre a função do botão com <code>on_botao(funcao)</code>.</span></label></li>
         <li><label><input type="checkbox" data-k="3-3"><span>Crie o <code>manual.py</code>. Ele só <b>devolve</b> a posição e o botão: quem move a cancela é o <code>main.py</code>, com <code>cancelas.angulo()</code>. Teste a cancela seguindo o pot num script à parte.</span></label></li>
       </ul></div>
       <div class="caixa-entrega"><h4>Sua entrega</h4>
@@ -894,7 +933,7 @@ if __name__ == "__main__":
       </div>
       <div class="bloco"><h4>Cuidado</h4><ul>
         <li>A leitura oscila. Mantenha o filtro (<code>ALPHA</code>) e a zona morta do <code>calibracao_pot2.py</code>.</li>
-        <li><b>Não crie o servo aqui.</b> Se o <code>manual.py</code> criar <code>AngularServo(13)</code>, o <code>cancelas.py</code> já é o dono e dá erro quando o <code>main.py</code> importar os dois.</li>
+        <li><b>Não crie o servo aqui.</b> Se o <code>manual.py</code> criar PWM nos pinos 13 ou 26, o <code>cancelas.py</code> já é o dono e dá erro quando o <code>main.py</code> importar os dois.</li>
         <li><b>Callback do botão roda em outra linha de execução.</b> Dentro dele, só marque uma flag (<code>apertou = True</code>). Quem mexe na cancela é o loop do <code>main.py</code>.</li>
         <li><b>O serviço não tem teclado.</b> A calibração (que usa <code>input()</code>) é feita à mão antes. Sem o arquivo, <code>posicao_pot()</code> devolve <code>None</code>.</li>
         <li>O pot usa <code>RPi.GPIO</code> e o exemplo do botão usa <code>gpiozero</code>. Se der conflito, leia o botão com <code>GPIO.input(5)</code>, como o <code>rgb_pwm_interativo.py</code> faz.</li>
@@ -932,22 +971,39 @@ if __name__ == "__main__":
 
     <div class="bloco">
       <h4>Código de partida</h4>
-      <div class="codigo"><div class="cod-cab"><span>teste_sinais.py</span><button class="copiar" type="button">Copiar</button></div><pre><code>from gpiozero import RGBLED, TonalBuzzer
+      <div class="codigo"><div class="cod-cab"><span>teste_sinais.py</span><button class="copiar" type="button">Copiar</button></div><pre><code>import RPi.GPIO as GPIO
+from gpiozero import TonalBuzzer
 from gpiozero.tones import Tone
 from time import sleep
 
-led = RGBLED(red=4, green=17, blue=27, active_high=False)   # ânodo comum
-buz = TonalBuzzer(6, octaves=2)
+# Mesma base do sinais.py do sistema final
+PINOS_LED = [4, 17, 27]              # R, G, B
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(PINOS_LED, GPIO.OUT, initial=GPIO.HIGH)
+pwms = [GPIO.PWM(p, 1000) for p in PINOS_LED]   # PWM de 1000 Hz
+for pwm in pwms:
+    pwm.start(100)
 
-led.color = (0, 1, 0)                  # verde: vaga livre
-sleep(1)
+buz = TonalBuzzer(6, octaves=3)
 
-for nota in ("C5", "E5", "G5", "C6"):  # musiquinha de 4 notas
+def cor(r, g, b):
+    # brilho de 0 a 100; ânodo comum: nível baixo acende, por isso 100 - brilho
+    for pwm, brilho in zip(pwms, (r, g, b)):
+        pwm.ChangeDutyCycle(100.0 - brilho)
+
+cor(0, 100, 0)                       # verde: vaga livre
+for nota in ("C5", "E5", "G5", "C6"):
     buz.play(Tone(nota))
     sleep(0.2)
-buz.stop()
+    buz.stop()
+    sleep(0.03)
 
-led.off()</code></pre></div>
+cor(0, 0, 0)                         # apagado
+for pwm in pwms:
+    pwm.stop()
+GPIO.cleanup(PINOS_LED)
+buz.close()</code></pre></div>
     </div>
 
     <div class="baixo">
@@ -997,24 +1053,134 @@ led.off()</code></pre></div>
 
     <div class="bloco">
       <h4>Instale a biblioteca (uma vez)</h4>
-      <div class="cmd"><code>sudo apt install -y python3-pip libgpiod2 &amp;&amp; pip3 install adafruit-circuitpython-dht</code><button class="copiar" type="button" data-copiar="sudo apt install -y python3-pip libgpiod2 && pip3 install adafruit-circuitpython-dht">Copiar</button></div>
+      <div class="cmd"><code>sudo apt install -y python3-pip libgpiod2 &amp;&amp; pip3 install gpiod</code><button class="copiar" type="button" data-copiar="sudo apt install -y python3-pip libgpiod2 && pip3 install gpiod">Copiar</button></div>
       <p class="liga">O pip respondeu “externally-managed-environment”? Crie um ambiente: <code>python3 -m venv --system-site-packages ~/venv &amp;&amp; source ~/venv/bin/activate</code> e rode o pip de novo.</p>
     </div>
 
     <div class="bloco">
       <h4>Código de partida</h4>
-      <div class="codigo"><div class="cod-cab"><span>teste_dht11.py</span><button class="copiar" type="button">Copiar</button></div><pre><code>import time
-import board
-import adafruit_dht
+      <div class="codigo"><div class="cod-cab"><span>teste_dht11.py</span><button class="copiar" type="button">Copiar</button></div><pre><code>"""Lê o DHT11 no GPIO22. Devolve (temperatura, umidade) ou None."""
 
-dht = adafruit_dht.DHT11(board.D22)    # GPIO22
+import time
 
-while True:
+import gpiod
+from gpiod.line import Bias, Direction, Edge, Value
+
+try:
+    from pinos import DHT11
+except ImportError:
+    DHT11 = 22
+
+TENTATIVAS = 5
+PAUSA_ENTRE_TENTATIVAS_S = 1.2
+LIMIAR_BIT_US = 50.0
+
+def _abrir_chip():
+    """Acha o chip de GPIO do Raspberry (o nome muda entre modelos)."""
+    for caminho in ("/dev/gpiochip0", "/dev/gpiochip4"):
+        try:
+            chip = gpiod.Chip(caminho)
+        except OSError:
+            continue
+        if "bcm2835" in chip.get_info().label or "rp1" in chip.get_info().label:
+            return chip
+        chip.close()
+    raise RuntimeError("Chip de GPIO do Raspberry não encontrado")
+
+def _uma_leitura():
+    """Faz uma tentativa. Devolve (temperatura, umidade) ou levanta RuntimeError."""
+    chip = _abrir_chip()
     try:
-        print(f"{dht.temperature} °C | {dht.humidity} %")
-    except RuntimeError as erro:        # falhar de vez em quando é normal
-        print("tentando de novo:", erro.args[0])
-    time.sleep(2)</code></pre></div>
+        pedido = chip.request_lines(
+            consumer="dht11",
+            config={DHT11: gpiod.LineSettings(
+                direction=Direction.OUTPUT, output_value=Value.INACTIVE)},
+            event_buffer_size=256,
+        )
+    finally:
+        chip.close()
+
+    try:
+        entrada = {DHT11: gpiod.LineSettings(
+            direction=Direction.INPUT, bias=Bias.PULL_UP,
+            edge_detection=Edge.BOTH)}
+        reconfigurar = pedido.reconfigure_lines
+        time.sleep(0.020)
+        reconfigurar(entrada)
+        eventos = []
+        limite = time.monotonic() + 0.25
+        while time.monotonic() &lt; limite and len(eventos) &lt; 90:
+            if pedido.wait_edge_events(timeout=0.02):
+                eventos.extend(pedido.read_edge_events())
+    finally:
+        pedido.release()
+
+    larguras = []
+    subida = None
+    for ev in eventos:
+        if ev.event_type == ev.Type.RISING_EDGE:
+            subida = ev.timestamp_ns
+        elif subida is not None:
+            larguras.append((ev.timestamp_ns - subida) / 1000.0)
+            subida = None
+
+    bits = [1 if w &gt; LIMIAR_BIT_US else 0 for w in larguras[-40:]]
+
+    # o primeiro bit pode se perder ao soltar a linha; ele é sempre 0 na umidade
+    faltam = 40 - len(bits)
+    if faltam &gt; 2:
+        raise RuntimeError(f"resposta incompleta ({len(bits)} de 40 bits)")
+    candidatos = [[0] + [(n &gt;&gt; i) &amp; 1 for i in range(faltam - 1)]
+                  for n in range(2 ** max(faltam - 1, 0))] if faltam else [[]]
+    erro = None
+    for prefixo in candidatos:
+        try:
+            return _decodificar(prefixo + bits)
+        except RuntimeError as e:
+            erro = e
+    raise erro
+
+def _decodificar(bits):
+    """40 bits -&gt; (temperatura, umidade). Levanta RuntimeError se algo não bater."""
+    dados = []
+    for i in range(5):
+        byte = 0
+        for b in bits[i * 8:(i + 1) * 8]:
+            byte = (byte &lt;&lt; 1) | b
+        dados.append(byte)
+    if (sum(dados[:4]) &amp; 0xFF) != dados[4]:
+        raise RuntimeError("soma de conferência não bateu")
+
+    umidade = dados[0] + dados[1] / 10.0
+    temperatura = dados[2] + (dados[3] &amp; 0x7F) / 10.0
+    if dados[3] &amp; 0x80:
+        temperatura = -temperatura
+    if not (0 &lt;= umidade &lt;= 100 and -20 &lt;= temperatura &lt;= 60):
+        raise RuntimeError(f"valor absurdo ({temperatura} °C, {umidade} %)")
+    return temperatura, umidade
+
+def ler():
+    """Devolve (temperatura °C, umidade %) ou None se todas as tentativas falharem."""
+    for tentativa in range(TENTATIVAS):
+        try:
+            return _uma_leitura()
+        except (RuntimeError, OSError):
+            if tentativa &lt; TENTATIVAS - 1:
+                time.sleep(PAUSA_ENTRE_TENTATIVAS_S)
+    return None
+
+if __name__ == "__main__":
+    print(f"Lendo o DHT11 no GPIO{DHT11} (Ctrl+C para parar)...")
+    try:
+        while True:
+            resultado = ler()
+            if resultado is None:
+                print("sem leitura (confira a ligação do DAT e os 3V3)")
+            else:
+                print(f"{resultado[0]:.1f} °C | {resultado[1]:.0f} %")
+            time.sleep(2)
+    except KeyboardInterrupt:
+        print("\nTeste encerrado.")</code></pre></div>
     </div>
 
     <div class="baixo">
@@ -1032,7 +1198,7 @@ while True:
       <div class="bloco"><h4>Cuidado</h4><ul>
         <li><b>RuntimeError de vez em quando é normal.</b> Por isso o <code>try/except</code> e a nova tentativa.</li>
         <li>Não leia mais rápido que a cada 2 segundos.</li>
-        <li><b>Apareceu “Unable to set line 22 to input”?</b> Um processo auxiliar da biblioteca ficou preso. Rode <code>pkill libgpiod_pulsein</code> e, no código, chame <code>dht.exit()</code> ao encerrar.</li>
+<li><b>Erro ao ler o DHT11?</b> Falhar de vez em quando é normal. O <code>ambiente.ler()</code> tenta de novo e devolve <code>None</code> se todas as tentativas falharem.</li>
         <li>Uma leitura pode levar alguns segundos com as tentativas. No <code>main.py</code>, leia só a cada 30 s e nunca no meio de abrir ou fechar a cancela.</li>
       </ul></div>
     </div>
@@ -1048,9 +1214,9 @@ while True:
         <p class="fraseg">Comece sem hardware: crie <code>cancelas.py</code>, <code>presenca.py</code> e <code>sinais.py</code> falsos, que só fazem <code>print</code>. O <code>main.py</code> já roda com eles. A cada módulo real que chegar, apague o falso.</p>
         <div class="regras-c">
           <div><b>Entrada</b>Carro 1 s à frente e há vaga: abre. Fecha 2 s depois que o carro passou. Conta uma entrada.</div>
-          <div><b>Lotado</b>Dentro ≥ vagas (6): não abre. LED vermelho e 2 bips.</div>
+          <div><b>Lotado</b>Dentro ≥ vagas (o total vem do servidor): não abre. LED vermelho e a música “lotado”.</div>
           <div><b>Saída</b>Porteiro clica “Liberar saída” no painel: servo 2 abre, espera 2 s, fecha, conta uma saída.</div>
-          <div><b>Manual</b>Pot ou botão mexeu: a guarita manda no servo 1, LED azul, e o sensor é ignorado. Volta ao automático após 10 s parado (feche a cancela ao voltar).</div>
+          <div><b>Manual</b>Botão: liga e desliga o modo manual (LED azul, e o sensor de entrada é ignorado). Pot: a cancela de saída acompanha o potenciômetro. Ao desligar o manual, as duas cancelas fecham.</div>
         </div>
       </div>
     </div>
@@ -1148,7 +1314,7 @@ while True:
 const express = require('express');
 const Database = require('better-sqlite3');
 
-const MAX_VAGAS = 6;                   // fácil de mudar
+const MAX_VAGAS = 7;                   // fácil de mudar
 
 const db = new Database('estacionamento.db');
 db.exec(`
@@ -1374,7 +1540,7 @@ setInterval(atualizar, 2000);
       <tbody>
         <tr><td><span class="tp k1"><span class="cr">1</span>Cancelas</span></td><td>Mover os 2 servos</td><td><code>cancelas.py</code></td><td>2: abre quando o carro chega</td></tr>
         <tr><td><span class="tp k2"><span class="cr">2</span>Presença</span></td><td>Ler distância, conferir com régua</td><td><code>presenca.py</code></td><td>1: carro na frente, cancela abre</td></tr>
-        <tr><td><span class="tp k3"><span class="cr">3</span>Guarita</span></td><td>Calibrar o pot, ler o botão</td><td><code>manual.py</code></td><td>1: o pot move o servo 1</td></tr>
+        <tr><td><span class="tp k3"><span class="cr">3</span>Guarita</span></td><td>Calibrar o pot, ler o botão</td><td><code>manual.py</code></td><td>2: o pot move o servo 2 (saída)</td></tr>
         <tr><td><span class="tp k4"><span class="cr">4</span>Sinalização</span></td><td>Cores e 4 notas</td><td><code>sinais.py</code></td><td>6: um sinal por estado</td></tr>
         <tr><td><span class="tp k5"><span class="cr">5</span>Ambiente</span></td><td>Ler temp. e umidade</td><td><code>ambiente.py</code></td><td>7: enviar a leitura</td></tr>
         <tr><td><span class="tp k6"><span class="cr">6</span>Lógica</span></td><td>Estados e esqueleto com falsos</td><td><code>main.py</code> rodando</td><td>troca falsos pelos reais</td></tr>
@@ -1387,9 +1553,9 @@ setInterval(atualizar, 2000);
 
   <h4 style="margin:24px 0 10px">Decisões já tomadas</h4>
   <div class="decididas">
-    <div><b>Servos</b>Servo 1 (GPIO13, J2) é a entrada e a guarita. Servo 2 (GPIO26, J3) é a saída.</div>
+    <div><b>Servos</b>Servo 1 (GPIO13, J2) é a entrada. Servo 2 (GPIO26, J3) é a saída, que o pot controla no modo manual.</div>
     <div><b>Saída</b>O porteiro clica “Liberar saída” no painel. O servo 2 abre, espera 2 s e fecha. Conta uma saída.</div>
-    <div><b>Vagas</b><code>MAX_VAGAS = 6</code> mora no <code>server.js</code> e sai no <code>/api/resumo</code> como <code>vagas</code>. A cancela fecha 2 s depois do carro passar.</div>
+    <div><b>Vagas</b><code>MAX_VAGAS = 7</code> mora no <code>server.js</code> e sai no <code>/api/resumo</code> como <code>vagas</code>. A cancela fecha 2 s depois do carro passar.</div>
   </div>
 </div></details>
 
@@ -1408,11 +1574,6 @@ setInterval(atualizar, 2000);
   <div class="bloco" style="margin-top:16px">
     <h4>pinos.py: a única fonte de verdade dos pinos</h4>
     <div class="codigo"><div class="cod-cab"><span>pinos.py</span><button class="copiar" type="button">Copiar</button></div><pre><code># pinos.py: a única fonte de verdade dos pinos da placa (numeração BCM)
-# Se os servos tremerem quando o LED e o buzzer tocam juntos, tire o # das 3 linhas abaixo.
-# Assim TODAS as peças usam o pigpio (veja a tarefa 1), e só se muda aqui.
-# from gpiozero import Device
-# from gpiozero.pins.pigpio import PiGPIOFactory
-# Device.pin_factory = PiGPIOFactory()
 
 SERVO_ENTRADA = 13   # J2
 SERVO_SAIDA = 26     # J3
@@ -1440,7 +1601,7 @@ DHT11 = 22           # J5, DAT</code></pre></div>
         <tr><td>Python → Node</td><td><code>POST /api/eventos</code></td><td><code>{"tipo": "entrada"}</code> ou <code>{"tipo": "saida"}</code>. Uma saída com ninguém dentro devolve 409</td></tr>
         <tr><td>Python → Node</td><td><code>POST /api/ambiente</code></td><td><code>{"temperatura": 26.0, "umidade": 58}</code></td></tr>
         <tr><td>Python → Node</td><td><code>GET /api/comandos/proximo</code></td><td>O comando mais antigo ainda não feito, já marcado como feito: <code>{"alvo": "saida", "acao": "abrir"}</code>. Se não há, 204 sem corpo</td></tr>
-        <tr><td>Página → Node</td><td><code>GET /api/resumo</code></td><td><code>{"entradas": 42, "saidas": 39, "dentro": 3, "vagas": 6, "por_dia": [{"dia": "2026-11-03", "entradas": 8, "saidas": 7}, ...]}</code> (últimos 7 dias; dentro e vagas valem para agora)</td></tr>
+        <tr><td>Página → Node</td><td><code>GET /api/resumo</code></td><td><code>{"entradas": 42, "saidas": 39, "dentro": 3, "vagas": 7, "por_dia": [{"dia": "2026-11-03", "entradas": 8, "saidas": 7}, ...]}</code> (últimos 7 dias; dentro e vagas valem para agora)</td></tr>
         <tr><td>Página → Node</td><td><code>GET /api/ambiente/ultima</code></td><td><code>{"temperatura": 26, "umidade": 58, "criado_em": "..."}</code></td></tr>
         <tr><td>Página → Node</td><td><code>POST /api/comandos</code></td><td><code>{"alvo": "saida", "acao": "abrir"}</code></td></tr>
       </tbody>
@@ -1450,12 +1611,12 @@ DHT11 = 22           # J5, DAT</code></pre></div>
 
 <details class="ref" id="demo"><summary><span class="ref-tx"><span class="ref-t">Roteiro da demonstração (3 minutos)</span><span class="ref-s">É o ensaio da fase 4. Se o time cumprir a lista, o sistema está pronto.</span></span></summary><div class="ref-corpo">
   <ol class="receita">
-    <li><b>Painel zerado</b>Banco novo, 6 vagas disponíveis.</li>
+    <li><b>Painel zerado</b>Banco novo, 7 vagas disponíveis.</li>
     <li><b>Carro chega</b>Caixa a menos de 5 cm: amarelo, música, cancela abre.</li>
     <li><b>Carro passa</b>Fecha 2 s depois, verde, as vagas disponíveis diminuem.</li>
     <li><b>Lotado</b>Repita até as vagas disponíveis chegarem a 0: vermelho, 2 bips, não abre.</li>
     <li><b>Saída</b>“Liberar saída” no painel: servo 2 abre, fecha em 2 s, as vagas disponíveis aumentam.</li>
-    <li><b>Manual</b>Gire o pot: o servo 1 acompanha. Aperte o botão: abre e fecha.</li>
+    <li><b>Manual</b>Gire o pot: a cancela de saída acompanha. Aperte o botão: liga e desliga o modo manual (LED azul).</li>
     <li><b>Ambiente e semana</b>Temperatura, umidade e gráfico da semana.</li>
   </ol>
   <h4 style="margin:28px 0 10px">Material de apoio</h4>
@@ -1464,7 +1625,6 @@ DHT11 = 22           # J5, DAT</code></pre></div>
     <li><a href="https://gpiozero.readthedocs.io/en/latest/recipes.html">gpiozero: receitas</a></li>
     <li><a href="https://gpiozero.readthedocs.io/en/latest/api_output.html">gpiozero: servo, LED RGB, buzzer</a></li>
     <li><a href="https://gpiozero.readthedocs.io/en/latest/api_input.html">gpiozero: botão e ultrassônico</a></li>
-    <li><a href="https://learn.adafruit.com/dht">Adafruit: DHT11</a></li>
     <li><a href="https://expressjs.com/pt-br/starter/hello-world.html">Express: primeiro servidor</a></li>
     <li><a href="https://github.com/WiseLibs/better-sqlite3">better-sqlite3</a></li>
     <li><a href="https://www.chartjs.org/docs/latest/">Chart.js</a></li>
@@ -1493,7 +1653,7 @@ DHT11 = 22           # J5, DAT</code></pre></div>
     <h4 style="margin-top:6px">Rodar o sistema no Raspberry</h4>
     <pre class="term"><span class="c"># No Raspberry (uma vez)</span>
 sudo apt update &amp;&amp; sudo apt install -y python3-gpiozero python3-requests libgpiod2 nodejs npm
-pip3 install adafruit-circuitpython-dht
+pip3 install gpiod
 
 <span class="c"># No seu PC: copiar o sistema (troque pelo IP de hoje)</span>
 scp -r codigo/sistema dsm@192.168.0.153:~/codigos/final

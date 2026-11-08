@@ -1,9 +1,4 @@
 # pinos.py: a única fonte de verdade dos pinos da placa (numeração BCM)
-# Se os servos tremerem quando o LED e o buzzer tocam juntos, tire o # das 3 linhas abaixo.
-# Assim TODAS as peças usam o pigpio (veja a tarefa 1), e só se muda aqui.
-# from gpiozero import Device
-# from gpiozero.pins.pigpio import PiGPIOFactory
-# Device.pin_factory = PiGPIOFactory()
 
 SERVO_ENTRADA = 13   # J2
 SERVO_SAIDA = 26     # J3

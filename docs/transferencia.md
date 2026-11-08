@@ -19,7 +19,7 @@
 ```bash
 # No Raspberry (uma vez)
 sudo apt update && sudo apt install -y python3-gpiozero python3-requests libgpiod2 nodejs npm
-pip3 install adafruit-circuitpython-dht
+pip3 install gpiod
 
 # No seu PC: copiar o sistema (troque pelo IP de hoje)
 scp -r codigo/sistema dsm@192.168.0.153:~/codigos/final
@@ -45,7 +45,7 @@ sudo systemctl enable --now estacionamento-web estacionamento
 ```bash
 # pare o sistema antes
 sudo systemctl stop estacionamento
-python3 codigo/starter/tarefa2_teste_distancia.py
+cd ~/codigos/final && python3 teste_isolado.py distancia
 ```
 
 ### Gerar de novo o guia

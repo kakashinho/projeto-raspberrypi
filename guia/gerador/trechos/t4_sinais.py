@@ -1,16 +1,33 @@
-from gpiozero import RGBLED, TonalBuzzer
+import RPi.GPIO as GPIO
+from gpiozero import TonalBuzzer
 from gpiozero.tones import Tone
 from time import sleep
 
-led = RGBLED(red=4, green=17, blue=27, active_high=False)   # ânodo comum
-buz = TonalBuzzer(6, octaves=2)
+# Mesma base do sinais.py do sistema final
+PINOS_LED = [4, 17, 27]              # R, G, B
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(PINOS_LED, GPIO.OUT, initial=GPIO.HIGH)
+pwms = [GPIO.PWM(p, 1000) for p in PINOS_LED]   # PWM de 1000 Hz
+for pwm in pwms:
+    pwm.start(100)
 
-led.color = (0, 1, 0)                  # verde: vaga livre
-sleep(1)
+buz = TonalBuzzer(6, octaves=3)
 
-for nota in ("C5", "E5", "G5", "C6"):  # musiquinha de 4 notas
+def cor(r, g, b):
+    # brilho de 0 a 100; ânodo comum: nível baixo acende, por isso 100 - brilho
+    for pwm, brilho in zip(pwms, (r, g, b)):
+        pwm.ChangeDutyCycle(100.0 - brilho)
+
+cor(0, 100, 0)                       # verde: vaga livre
+for nota in ("C5", "E5", "G5", "C6"):
     buz.play(Tone(nota))
     sleep(0.2)
-buz.stop()
+    buz.stop()
+    sleep(0.03)
 
-led.off()
+cor(0, 0, 0)                         # apagado
+for pwm in pwms:
+    pwm.stop()
+GPIO.cleanup(PINOS_LED)
+buz.close()

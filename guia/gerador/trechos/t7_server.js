@@ -2,7 +2,7 @@
 const express = require('express');
 const Database = require('better-sqlite3');
 
-const MAX_VAGAS = 6;                   // fácil de mudar
+const MAX_VAGAS = 7;                   // fácil de mudar
 
 const db = new Database('estacionamento.db');
 db.exec(`

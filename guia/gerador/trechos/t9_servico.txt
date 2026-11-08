@@ -1,6 +1,7 @@
 [Unit]
-Description=Estacionamento inteligente (main.py)
-After=network.target
+Description=Estacionamento inteligente (main.py: cancelas, sensores, LED e buzzer)
+After=network.target estacionamento-web.service
+Wants=estacionamento-web.service
 
 [Service]
 User=dsm

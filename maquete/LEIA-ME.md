@@ -149,7 +149,7 @@ Não precisa tirar o telhado. Para pôr de volta, faça o inverso.
 
 ## 5. Para a equipe (código)
 
-- **Vagas:** a maquete tem **7 vagas**. No servidor, `MAX_VAGAS = 6` (em `guia_equipe/gerador/trechos/t7_server.js`) passa a **7**.
+- **Vagas:** a maquete tem **7 vagas**. No servidor do sistema final, `MAX_VAGAS = 7` (em `codigo/sistema/server.js`), igual à maquete.
 - **Sensor:**
   - O carro parado na cancela fica a **21 a 25 mm** do sensor.
   - Sem carro, ele vê a parede da guarita a **59 mm**.
