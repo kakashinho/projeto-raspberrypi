@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Maquete do estacionamento: vista 3D</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; }
+  #ui { position: absolute; top: 10px; left: 10px; width: 262px; background: rgba(255,255,255,.94);
+        border-radius: 10px; padding: 10px 12px; font-size: 13px; box-shadow: 0 2px 10px rgba(0,0,0,.18); }
+  #ui h3 { margin: 0 0 4px; font-size: 15px; }
+  #ui .sec { margin: 9px 0 3px; font-weight: 600; color: #444; border-top: 1px solid #ddd; padding-top: 6px; }
+  #ui label { display: block; margin: 2px 0; }
+  #ui input[type=range] { width: 100%; }
+  #ui button { margin: 3px 3px 0 0; padding: 4px 8px; border: 1px solid #aaa; border-radius: 6px; background: #f6f6f6;
+               cursor: pointer; font-size: 12.5px; }
+  #ui button.on { background: #2f6fd8; color: #fff; border-color: #2f6fd8; }
+  #leitura { margin-top: 6px; padding: 5px 7px; border-radius: 6px; background: #f1f4f8; font-size: 12.5px; }
+  #led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #22dd44; margin-right: 5px;
+         vertical-align: -1px; box-shadow: 0 0 5px #22dd44; }
+  #info { position: absolute; bottom: 10px; left: 10px; right: 10px; font-size: 12px; color: #333;
+          background: rgba(255,255,255,.85); border-radius: 8px; padding: 6px 10px; }
+  #erro { position: absolute; top: 10px; right: 10px; max-width: 420px; color: #a00; font-weight: 600;
+          background: rgba(255,255,255,.95); border-radius: 8px; padding: 0 10px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div id="ui">
+  <h3>Maquete do estacionamento <span id="versao"></span></h3>
+  <div class="sec">Mostrar</div>
+  <label><input type="checkbox" data-g="painel" checked> Parede da frente (painel), solta</label>
+  <label><input type="checkbox" data-g="paredes" checked> Outras paredes e totem</label>
+  <label><input type="checkbox" data-g="telhado" checked> Telhado</label>
+  <label><input type="checkbox" data-g="carros" checked> Carros</label>
+  <label><input type="checkbox" data-g="estrutura" checked> Estrutura de baixo (5 cm)</label>
+  <label><input type="checkbox" data-g="cabos" checked> Cabos</label>
+  <label><input type="checkbox" data-g="eletronica" checked> Eletrônica</label>
+  <label><input type="checkbox" data-g="rotulos" checked> Rótulos</label>
+  <div class="sec">Cancelas (0° = fechada, 90° = aberta)</div>
+  <label>Entrada: <b id="vE">0°</b><input type="range" id="angE" min="0" max="90" value="0"></label>
+  <label>Saída: <b id="vS">0°</b><input type="range" id="angS" min="0" max="90" value="0"></label>
+  <div class="sec">Simulação</div>
+  <label><input type="checkbox" id="lotado"> Estacionamento lotado (7 vagas ocupadas)</label>
+  <button id="btnCarro">&#9654; Carro chegando</button>
+  <div id="leitura"><span id="led"></span><span id="txtSensor">Sensor: -</span></div>
+  <div class="sec">Vista</div>
+  <label>Explodir <input type="range" id="exp" min="0" max="100" value="0"></label>
+  <button id="btnPasta">Modo pasta</button>
+  <button data-v="normal">Inicial</button><button data-v="frente">Frente</button><button data-v="cima">Cima</button><button data-v="baixo">Por baixo</button>
+</div>
+<div id="erro"></div>
+<div id="info">Arraste para girar, roda do mouse para zoom, botão direito para mover. Tudo em milímetros, gerado de design.py.
+  Precisa de internet (o three.js vem da CDN jsdelivr).</div>
+<script>
+  setTimeout(function () {
+    if (!window.__ok) document.getElementById('erro').textContent =
+      'Não consegui carregar o three.js. Esta página precisa de internet para abrir a vista 3D.';
+  }, 9000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+window.addEventListener('error', e => { document.getElementById('erro').textContent = 'Erro: ' + e.message; });
+
+const S = /*__CENA__*/null;
+const [W, D] = S.piso;
+const V = (x, y, z) => new THREE.Vector3(x - W / 2, z, -(y - D / 2));
+const params = new URLSearchParams(location.search);
+document.getElementById('versao').textContent = S.texto.versao;
+
+// ------------------------------------------------------------ cena
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#dde4ec');
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 1, 6000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7d7466, 1.25));
+const sol = new THREE.DirectionalLight(0xffffff, 1.5); sol.position.set(-200, 450, 300); scene.add(sol);
+const sol2 = new THREE.DirectionalLight(0xffffff, 0.45); sol2.position.set(250, 120, -350); scene.add(sol2);
+
+const mesa = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1200),
+  new THREE.MeshStandardMaterial({ color: '#cdb995', roughness: 0.95 }));
+mesa.rotation.x = -Math.PI / 2; scene.add(mesa);
+
+const mats = new Map();
+function mat(cor, op = 1) {
+  const k = cor + '|' + op;
+  if (!mats.has(k)) mats.set(k, new THREE.MeshStandardMaterial({ color: cor, roughness: 0.85,
+    transparent: op < 1, opacity: op, side: THREE.DoubleSide }));
+  return mats.get(k);
+}
+const linhaMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 });
+const ledMat = new THREE.MeshStandardMaterial({ color: '#22dd44', emissive: '#22dd44', emissiveIntensity: 0.9 });
+
+const montada = new THREE.Group(); scene.add(montada);
+const pastaG = new THREE.Group(); pastaG.visible = false; scene.add(pastaG);
+const grupos = {};
+const registra = (g, o) => (grupos[g] ||= []).push(o);
+const unidades = {};
+function container(u) {
+  if (!u) return montada;
+  if (!unidades[u]) {
+    const p = S.pivos[u] || [0, 0, 0, 0];
+    const pv = V(p[0], p[1], p[2]);
+    const g = new THREE.Group(); g.position.copy(pv);
+    const inner = new THREE.Group(); inner.position.copy(pv).negate(); g.add(inner);
+    g.userData = { pivo: pv.clone(), inner, sinal: p[3] || 0 };
+    montada.add(g); unidades[u] = g;
+  }
+  return unidades[u].userData.inner;
+}
+
+// placa de papelão: contorno 2D (com furos) extrudado na espessura
+function geoPlaca(pl, o, c, f, t) {
+  const shape = new THREE.Shape(c.map(p => new THREE.Vector2(p[0], p[1])));
+  for (const h of f || []) {
+    if (Array.isArray(h)) shape.holes.push(new THREE.Path(h.map(p => new THREE.Vector2(p[0], p[1]))));
+    else { const p = new THREE.Path(); p.absarc(h.c[0], h.c[1], h.c[2], 0, Math.PI * 2, false); shape.holes.push(p); }
+  }
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false, curveSegments: 20 });
+  const tv = V(o[0], o[1], o[2]);
+  const m = new THREE.Matrix4();
+  if (pl === 'xy') m.set(1, 0, 0, tv.x, 0, 0, 1, tv.y, 0, -1, 0, tv.z, 0, 0, 0, 1);
+  else if (pl === 'xz') m.set(1, 0, 0, tv.x, 0, 1, 0, tv.y, 0, 0, 1, tv.z - t, 0, 0, 0, 1);
+  else m.set(0, 0, 1, tv.x, 0, 1, 0, tv.y, -1, 0, 0, tv.z, 0, 0, 0, 1);
+  geo.applyMatrix4(m);
+  return geo;
+}
+
+for (const it of S.itens) {
+  let obj, base = new THREE.Vector3();
+  if (it.k === 'placa') {
+    const geo = geoPlaca(it.pl, it.o, it.c, it.f, it.t);
+    obj = new THREE.Group();
+    obj.add(new THREE.Mesh(geo, mat(it.cor)));
+    if (it.t > 0.5) obj.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), linhaMat));
+    if (it.fl) {
+      const g2 = geoPlaca('xy', it.fl.o, it.fl.c, it.fl.f, it.t);
+      pastaG.add(new THREE.Mesh(g2, mat(it.cor)));
+      pastaG.add(new THREE.LineSegments(new THREE.EdgesGeometry(g2, 25), linhaMat));
+    }
+  } else if (it.k === 'caixa') {
+    const a = it.a, b = it.b;
+    const geo = new THREE.BoxGeometry(Math.abs(b[0] - a[0]), Math.abs(b[2] - a[2]), Math.abs(b[1] - a[1]));
+    obj = new THREE.Mesh(geo, mat(it.cor, it.op));
+    base = V((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  } else {
+    const geo = new THREE.CylinderGeometry(it.r, it.r, it.h, 28);
+    const p = it.p.slice();
+    if (it.ax === 'x') { geo.rotateZ(Math.PI / 2); p[0] += it.h / 2; }
+    else if (it.ax === 'y') { geo.rotateX(Math.PI / 2); p[1] += it.h / 2; }
+    else p[2] += it.h / 2;
+    obj = new THREE.Mesh(geo, it.n === 'LED' ? ledMat : mat(it.cor, it.op));
+    base = V(p[0], p[1], p[2]);
+  }
+  obj.position.copy(base);
+  obj.userData.base = base.clone();
+  obj.userData.e = new THREE.Vector3(it.e[0], it.e[2], -it.e[1]);
+  container(it.u).add(obj);
+  registra(it.g, obj);
+}
+
+for (const c of S.cabos) {
+  const curva = new THREE.CatmullRomCurve3(c.pts.map(p => V(p[0], p[1], p[2])));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(curva, 200, c.r, 10, false), mat(c.cor));
+  m.userData.base = new THREE.Vector3(); m.userData.e = new THREE.Vector3();
+  montada.add(m); registra('cabos', m);
+}
+
+function sprite(txt, s, fundo) {
+  const fs = 44, pad = 14;
+  const cv = document.createElement('canvas'); const ctx = cv.getContext('2d');
+  const fonte = `600 ${fs}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = fonte;
+  const w = Math.ceil(ctx.measureText(txt).width) + pad * 2, h = fs + pad * 2 - 6;
+  cv.width = w; cv.height = h;
+  ctx.font = fonte;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(1.5, 1.5, w - 3, h - 3, 12); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#1b1b1b'; ctx.textBaseline = 'middle'; ctx.fillText(txt, pad, h / 2 + 1);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: !!fundo, transparent: true }));
+  sp.scale.set(s * w / h, s, 1); sp.renderOrder = fundo ? 0 : 20;
+  return sp;
+}
+for (const r of S.rotulos) {
+  const sp = sprite(r.t, r.s, r.fundo); sp.position.copy(V(r.p[0], r.p[1], r.p[2]));
+  sp.userData.base = sp.position.clone(); sp.userData.e = new THREE.Vector3();
+  montada.add(sp); registra('rotulos', sp);
+}
+
+// ------------------------------------------------------------ pasta (peças deitadas)
+const [pInt, pComp, pLomb] = S.pasta.interno;
+const alturaPilha = S.pasta.base + S.pasta.camadas * S.pasta.T;
+const caixaPasta = new THREE.Group();
+{
+  const bg = new THREE.BoxGeometry(pComp, pLomb, pInt);
+  caixaPasta.add(new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: '#3a7bd5', transparent: true, opacity: 0.07, depthWrite: false })));
+  caixaPasta.add(new THREE.LineSegments(new THREE.EdgesGeometry(bg), new THREE.LineBasicMaterial({ color: '#3a7bd5' })));
+  caixaPasta.position.copy(V(W / 2, D / 2, -S.pasta.T + pLomb / 2));
+  caixaPasta.visible = false; scene.add(caixaPasta);
+}
+
+// ------------------------------------------------------------ sensor (cone)
+const coneMat = new THREE.MeshBasicMaterial({ color: '#ffd400', transparent: true, opacity: 0.30, side: THREE.DoubleSide, depthWrite: false });
+let cone = null, coneL = -1;
+function setCone(L) {
+  if (Math.abs(L - coneL) < 0.05) return;
+  coneL = L;
+  if (cone) { montada.remove(cone); cone.geometry.dispose(); }
+  const rS = 6, rB = rS + L * Math.tan(7.5 * Math.PI / 180);
+  const g = new THREE.CylinderGeometry(rB, rS, L, 40, 1, true); g.rotateZ(-Math.PI / 2);
+  cone = new THREE.Mesh(g, coneMat);
+  cone.position.copy(V(S.sensor.x + L / 2, S.sensor.y, S.sensor.z));
+  cone.visible = estado.modo !== 'pasta';
+  montada.add(cone);
+}
+function leituraSensor() {
+  const g = unidades['espera'];
+  const cx = g.position.x + W / 2, cy = -g.position.z + D / 2;
+  const a = Math.abs(g.rotation.y) % Math.PI;
+  const deitado = a > Math.PI / 4 && a < 3 * Math.PI / 4;
+  const hx = deitado ? S.carro.L / 2 : S.carro.W / 2, hy = deitado ? S.carro.W / 2 : S.carro.L / 2;
+  const s = S.sensor;
+  if (cy + hy > s.y - 8 && cy - hy < s.y + 8 && cx - hx > s.x && cx - hx < s.parede) return { L: cx - hx - s.x, viu: true };
+  return { L: s.parede - s.x, viu: false };
+}
+
+// ------------------------------------------------------------ estado e controles
+const estado = { modo: 'montada', exp: 0 };
+function aplicaVisibilidade() {
+  const p = estado.modo === 'pasta';
+  for (const [g, objs] of Object.entries(grupos)) {
+    let vis;
+    if (p) vis = g === 'piso';
+    else { const cb = document.querySelector(`input[data-g="${g}"]`); vis = cb ? cb.checked : true; }
+    for (const o of objs) o.visible = vis;
+  }
+  pastaG.visible = p; caixaPasta.visible = p;
+  if (cone) cone.visible = !p;
+  mesa.position.y = p ? -S.pasta.T - 0.3 : -S.elev - 0.05;
+  document.getElementById('btnPasta').classList.toggle('on', p);
+}
+function aplicaExplode(f) {
+  for (const objs of Object.values(grupos))
+    for (const o of objs) o.position.copy(o.userData.base).addScaledVector(o.userData.e, f);
+}
+function setAng(qual, graus) {
+  const u = unidades[qual === 'E' ? 'bracoE' : 'bracoS'];
+  u.rotation.z = u.userData.sinal * graus * Math.PI / 180;
+  document.getElementById('ang' + qual).value = graus;
+  document.getElementById('v' + qual).textContent = Math.round(graus) + '°';
+}
+const CORES_LED = { verde: '#22dd44', amarelo: '#ffcc00', vermelho: '#ff2222' };
+function setLED(c) {
+  ledMat.color.set(CORES_LED[c]); ledMat.emissive.set(CORES_LED[c]);
+  const el = document.getElementById('led'); el.style.background = CORES_LED[c]; el.style.boxShadow = '0 0 6px ' + CORES_LED[c];
+}
+function posCarro(dy, dx = 0, rot = 0) {
+  const g = unidades['espera'], pv = g.userData.pivo;
+  g.position.set(pv.x + dx, pv.y, pv.z - dy); g.rotation.y = rot;
+}
+function lotado(on) { if (unidades['vaga4']) unidades['vaga4'].visible = on; }
+
+for (const cb of document.querySelectorAll('input[data-g]')) cb.addEventListener('change', aplicaVisibilidade);
+for (const q of ['E', 'S']) document.getElementById('ang' + q).addEventListener('input', e => setAng(q, +e.target.value));
+document.getElementById('exp').addEventListener('input', e => { estado.exp = e.target.value / 100; aplicaExplode(estado.exp); });
+document.getElementById('lotado').addEventListener('change', e => lotado(e.target.checked));
+document.getElementById('btnPasta').addEventListener('click', () => {
+  estado.modo = estado.modo === 'pasta' ? 'montada' : 'pasta';
+  aplicaExplode(estado.modo === 'pasta' ? 0 : estado.exp);
+  aplicaVisibilidade(); vista(estado.modo === 'pasta' ? 'pasta' : 'normal');
+});
+for (const b of document.querySelectorAll('button[data-v]')) b.addEventListener('click', () => vista(b.dataset.v));
+
+let anim = null;
+document.getElementById('btnCarro').addEventListener('click', () => {
+  if (estado.modo === 'pasta') document.getElementById('btnPasta').click();
+  anim = { t0: performance.now() / 1000, lot: document.getElementById('lotado').checked };
+});
+const ease = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+function estadoAnim(t, lot) {
+  // estado completo em função do tempo: posição do carro, ângulo da cancela e cor do LED
+  const C = S.carro;
+  const dyFora = -C.L - 15 - C.espera_y0;
+  const dyCorr = C.corredor_y - (C.espera_y0 + C.L / 2);
+  if (t < 2.5) return { dy: dyFora * (1 - ease(t / 2.5)), dx: 0, rot: 0, ang: 0, led: 'verde' };
+  if (lot) return { dy: 0, dx: 0, rot: 0, ang: 0, led: 'vermelho' };
+  if (t < 3.2) return { dy: 0, dx: 0, rot: 0, ang: 0, led: 'amarelo' };
+  if (t < 4.2) return { dy: 0, dx: 0, rot: 0, ang: 90 * ease(t - 3.2), led: 'amarelo' };
+  if (t < 5.6) return { dy: dyCorr * ease((t - 4.2) / 1.4), dx: 0, rot: 0, ang: 90, led: 'amarelo' };
+  if (t < 6.4) return { dy: dyCorr, dx: 0, rot: -Math.PI / 2 * ease((t - 5.6) / 0.8), ang: 90, led: 'amarelo' };
+  return { dy: dyCorr, dx: 95 * ease((t - 6.4) / 1.6), rot: -Math.PI / 2, ang: 90 * (1 - ease(t - 6.4)), led: 'verde' };
+}
+function passoAnim(agora) {
+  if (!anim) return;
+  const fixo = params.has('t');
+  const t = fixo ? parseFloat(params.get('t')) : agora / 1000 - anim.t0;
+  const e = estadoAnim(t, anim.lot);
+  posCarro(e.dy, e.dx, e.rot); setAng('E', e.ang); setLED(e.led);
+  if (!fixo && t > 8.5) anim = null;
+}
+
+function vista(nome) {
+  let alvo = V(W / 2, D / 2 - 10, 0), pos;
+  if (nome === 'cima') { alvo = V(W / 2, D / 2, 0); pos = V(W / 2, D / 2 - 1, 720); }
+  else if (nome === 'frente') pos = V(W / 2, -470, 110);
+  else if (nome === 'baixo') { pos = V(W / 2 + 230, -330, -300); alvo = V(W / 2, D / 2, -50); }
+  else if (nome === 'pasta') { pos = V(W / 2 - 90, -300, 300); alvo = V(W / 2, D / 2, 10); }
+  else pos = V(W / 2 - 90, -330, 330);
+  camera.position.copy(pos); controls.target.copy(alvo); controls.update();
+}
+
+function ajustaTela() {
+  camera.aspect = innerWidth / innerHeight;
+  if (innerWidth > 900) camera.setViewOffset(innerWidth, innerHeight, -140, 0, innerWidth, innerHeight);
+  else camera.clearViewOffset();
+  camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', ajustaTela);
+ajustaTela();
+
+// ------------------------------------------------------------ início (parâmetros na URL servem para conferir)
+const [c0, e0, v0] = S.texto.sensor;
+for (const g of (params.get('ocultar') || '').split(',')) {
+  const cb = document.querySelector(`input[data-g="${g}"]`); if (cb) cb.checked = false;
+}
+if (params.get('lotado') === '1') document.getElementById('lotado').checked = true;
+lotado(document.getElementById('lotado').checked);
+if (params.has('exp')) { estado.exp = +params.get('exp'); document.getElementById('exp').value = estado.exp * 100; }
+if (params.get('modo') === 'pasta') estado.modo = 'pasta';
+aplicaVisibilidade(); aplicaExplode(estado.modo === 'pasta' ? 0 : estado.exp);
+setAng('E', +(params.get('angE') || 0)); setAng('S', +(params.get('angS') || 0));
+if (params.get('anim') === '1') anim = { t0: performance.now() / 1000, lot: document.getElementById('lotado').checked };
+vista(params.get('vista') || (estado.modo === 'pasta' ? 'pasta' : 'normal'));
+if (params.has('cam')) {
+  const c = params.get('cam').split(',').map(Number), t = (params.get('alvo') || '0,0,0').split(',').map(Number);
+  camera.position.copy(V(c[0], c[1], c[2])); controls.target.copy(V(t[0], t[1], t[2])); controls.update();
+}
+
+function loop(agora) {
+  passoAnim(agora);
+  const r = leituraSensor();
+  setCone(r.L);
+  const txt = estado.modo === 'pasta'
+    ? `Pilha: ${alturaPilha.toFixed(1)} mm (piso com EVA e batentes + ${S.pasta.camadas} camadas). Pasta: lombada de ${pLomb} mm.`
+    : `Sensor: ${r.L.toFixed(0)} mm, ${r.viu ? 'CARRO' : 'sem carro'} (limiar ${S.sensor.limiar} mm). ` +
+      `Carro centrado ${c0}, encostado ${e0}, vazio ${v0} mm.`;
+  document.getElementById('txtSensor').textContent = txt;
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+window.__ok = true;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
