@@ -1,377 +1,261 @@
 <a id="topo"></a>
 
-<h2 align="center">🅿️ Estacionamento Inteligente com Raspberry Pi</h2>
+<h1 align="center">🅿️ Estacionamento Inteligente</h1>
 
 <p align="center">
-<b>🏠 Início</b> · <a href="#visao-geral">Visão Geral</a> · <a href="#funcionalidades">Funcionalidades</a> · <a href="#equipe">Equipe</a> · <a href="#status">Status</a> · <a href="#hardware">Hardware</a> · <a href="#executar">Como executar</a> · <a href="#api">API</a> · <a href="#documentacao">Documentação</a>
+Raspberry Pi, sensores e um painel web para controlar entradas, saídas e vagas.
 </p>
 
 <p align="center">
-<i>Atividade: <b>Apresentação do projeto Raspberry</b> · Sistema IoT completo</i>
+<img src="https://img.shields.io/badge/Raspberry%20Pi-A22846?style=for-the-badge&logo=raspberrypi&logoColor=white" alt="Raspberry Pi">
+<img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js">
+<img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite">
+<img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+<img src="https://img.shields.io/badge/KiCad-314CB0?style=for-the-badge&logo=kicad&logoColor=white" alt="KiCad">
 </p>
 
-> **Caso de uso:** estacionamento de supermercado 🛒
->
-> **Foco:** controlar a **saída**. Quem entra não paga na entrada; quem sai precisa estar liberado, o que no protótipo acontece pelo painel ou pelo potenciômetro da guarita.
+<p align="center">
+<img src="docs/projeto_fisico/fotos/07-painel-e-maquete-em-funcionamento.jpeg" width="760" alt="Protótipo funcionando: painel no notebook e maquete">
+</p>
 
-### 🔗 Links rápidos
-
-| Recurso | Onde está |
-| --- | :--: |
-| 🧩 Código do sistema final | [`codigo/sistema/`](codigo/sistema/) |
-| 🧪 Códigos de partida (um por tarefa) | [`codigo/starter/`](codigo/starter/) |
-| 📘 Guia da equipe | [`guia/index.html`](guia/index.html) (abra no navegador) |
-| 🔌 Projeto da placa de interface | [`hardware/`](hardware/) |
-| 🧾 Lista de materiais | [`docs/lista_de_materiais.csv`](docs/lista_de_materiais.csv) |
-| 📦 O que tem aqui e como usar cada parte | [`docs/transferencia.md`](docs/transferencia.md) |
-| 🧱 Maquete do estacionamento (papelão e EVA) | [`maquete/`](maquete/) |
+<p align="center">
+<a href="docs/projeto_fisico/video/demonstracao-projeto-fisico.mp4"><b>▶️ Vídeo</b></a> &nbsp;·&nbsp;
+<a href="codigo/sistema/"><b>💻 Código</b></a> &nbsp;·&nbsp;
+<a href="guia/guia_equipe.pdf"><b>📘 Guia (PDF)</b></a> &nbsp;·&nbsp;
+<a href="maquete/"><b>🧱 Maquete</b></a>
+</p>
 
 ---
 
-## <a id="visao-geral"></a>🎯 Visão Geral
+## 🎯 Sobre o projeto
 
-### ⚠️ O problema
+Projeto da atividade **Apresentação do projeto Raspberry**. O caso escolhido é um **estacionamento de supermercado**, em que o que importa é a **saída**: quem sai precisa estar liberado (no protótipo, pelo painel ou pelo potenciômetro da guarita).
 
-Em estacionamentos de supermercado, o controle costuma ser feito na entrada, com tickets, e a cobrança acontece na saída. Sem contagem em tempo real, o estabelecimento não sabe quantas vagas estão livres e não tem histórico de movimento por dia.
+| 🚗 Entrada | 🚧 Saída | 🖥️ Painel |
+| :-- | :-- | :-- |
+| O sensor percebe o carro. Se há vaga, a cancela abre e fecha depois que o carro passa. | O porteiro libera a saída pelo painel ou pela guarita. | Vagas livres, movimento da semana e temperatura do pátio. |
 
-### 🚀 A proposta
+---
 
-Um sistema com **Raspberry Pi** que:
-
-- 🚗 **detecta** carros na entrada com um sensor ultrassônico;
-- 🚧 **controla** as duas cancelas com servomotores;
-- 🔢 **conta** entradas e saídas e mantém o número de vagas livres;
-- 🌡️ **mede** temperatura e umidade do pátio;
-- 🖥️ **mostra** tudo num painel web, acessado pelo navegador de qualquer computador da rede.
-
-### 🗺️ Arquitetura
-
-O desenho segue o slide da atividade: sensores ligados ao Raspberry, backend em Node.js, banco SQLite e frontend HTML servido pelo próprio Raspberry.
+## 🧭 Como funciona
 
 ```mermaid
 flowchart LR
-  subgraph Sensores
-    DHT[🌡️ DHT11<br/>temperatura e umidade]
-    US[📏 HC-SR04<br/>presença]
-    POT[🎛️ Potenciômetro e botão<br/>guarita]
+  subgraph S["📡 Sensores"]
+    direction TB
+    DHT["🌡️ DHT11<br/>temperatura e umidade"]
+    US["📏 HC-SR04<br/>presença"]
+    POT["🎛️ Potenciômetro e botão<br/>guarita"]
   end
-  subgraph Raspberry Pi
-    MAIN[🧠 main.py<br/>decide e aciona]
-    CANC[🚧 Cancelas, LED e buzzer]
-    NODE[⚙️ Node.js + Express<br/>server.js]
-    DB[(🗄️ SQLite<br/>estacionamento.db)]
-    PAINEL[🖥️ Painel HTML<br/>public/index.html]
-  end
-  NAV[💻 Navegador<br/>PC ou celular]
 
-  Sensores --> MAIN
+  subgraph R["🍓 Raspberry Pi"]
+    direction TB
+    MAIN["🧠 main.py<br/>decide e aciona"]
+    CANC["🚧 Cancelas, LED e buzzer"]
+    NODE["⚙️ Node.js + Express<br/>server.js"]
+    DB[("🗄️ SQLite<br/>estacionamento.db")]
+    PAINEL["🖥️ Painel web<br/>public/index.html"]
+  end
+
+  NAV["💻 Navegador<br/>PC ou celular"]
+
+  DHT --> MAIN
+  US --> MAIN
+  POT --> MAIN
   MAIN --> CANC
   MAIN -- "API HTTP /api" --> NODE
   NODE <--> DB
   NODE --> PAINEL
   NAV -- "raspberrypi.local:3000" --> PAINEL
+
+  classDef sensor fill:#FFF4D6,stroke:#E0A800,color:#3D2E00
+  classDef pi fill:#E3F2FD,stroke:#1E6FD9,color:#0B2E59
+  classDef server fill:#E8F5E9,stroke:#2E7D32,color:#123B16
+  classDef painel fill:#F3E5F5,stroke:#8E24AA,color:#3A1347
+  classDef user fill:#ECEFF1,stroke:#546E7A,color:#263238
+  class DHT,US,POT sensor
+  class MAIN,CANC pi
+  class NODE,DB server
+  class PAINEL painel
+  class NAV user
+  style S fill:#FFFBEA,stroke:#E0A800
+  style R fill:#F4F9FF,stroke:#1E6FD9
 ```
 
+**Em ordem, o que acontece:**
+
+1. 🚗 Um carro chega à entrada e o sensor percebe.
+2. 🧠 A Raspberry decide: se há vaga, abre a cancela. Se está lotado, acende o LED vermelho.
+3. ⚙️ A Raspberry registra a entrada ou saída no servidor.
+4. 🖥️ O painel atualiza as vagas, e a pessoa vê tudo no navegador.
+
+> 🎨 **Cores:** 🟡 sensores · 🔵 Raspberry Pi · 🟢 servidor e banco · 🟣 painel · ⚪ navegador
 
 
-## <a id="funcionalidades"></a>✨ Funcionalidades
+---
 
-| | Função | Como funciona |
-| :--: | --- | --- |
-| 🟡 | **Entrada** | Carro a menos de 5 cm, confirmado em duas leituras seguidas. Se há vaga, a cancela abre e fecha 2 s depois que o carro passa. |
-| 🔴 | **Lotado** | Com 7 carros dentro, a entrada não abre. LED vermelho e música de lotado. |
-| 🟢 | **Saída liberada** | O botão **Liberar saída** no painel abre a cancela de saída por 2 s e conta uma saída. Sem ninguém dentro, o pedido é recusado. |
-| 🎛️ | **Modo manual** | O botão da guarita liga o modo manual (LED azul). O potenciômetro move a cancela de saída, e a entrada fica fechada. |
-| 🌡️ | **Ambiente** | Temperatura e umidade lidas a cada 30 s e mostradas no painel. |
-| 📊 | **Painel** | Vagas disponíveis agora, entradas e saídas da semana, gráfico dos últimos 7 dias e estado do sistema físico. |
+## 👥 Quem fez o quê
 
-<details>
-<summary><b>🔎 Regras e valores fixos</b></summary>
+| Integrante | Tarefa | Redes |
+| :-- | :-- | :-- |
+| *Ana Graciano* | 1️⃣ Cancelas | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/Ane-Graciano) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ana-graciano/) |
+| *Laís Zanardi* | 2️⃣ Presença | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/lais-zanardi) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/lais-zanardi-inocencio/) |
+| *Pedro Nascimento* | 3️⃣ Guarita manual | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/P3dr0213) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/pedro-nascimento-87a22937a/) |
+| *Lucas Inácio* | 4️⃣ Sinalização | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/Lukitta013) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/luucasinacioo/) |
+| *João Moura* | 5️⃣ Ambiente | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/JoaooMoura) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/joaoomoura/) |
+| *Gustavo Rosa* | 6️⃣ Lógica | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/gustasvos) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/gustavo-rosa-46a251180/) |
+| *João Silva* | 7️⃣ Backend | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/kakashinho) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/joao-vitor-siqueira-a2a2a3227/) |
+| *Enzo Gabriel de Paula* | 8️⃣ Frontend | [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/EnzoGabrielCode) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/enzo-gabriel-de-paula-8795a8332/) |
 
-| Regra | Valor | Onde mudar |
-| --- | --- | --- |
-| Número de vagas | 7 | `MAX_VAGAS` em `server.js` |
-| Distância de detecção | menor que 5 cm | `LIMIAR_CARRO_CM` em `presenca.py` |
-| Confirmação de presença | 2 leituras, a cada 2 s | `PERIODO_PRESENCA` em `main.py` |
-| Tempo para fechar a cancela | 2 s | `TEMPO_FECHAR` em `main.py` |
-| Intervalo mínimo entre entradas | 6 s | `COOLDOWN_ENTRADA` em `main.py` |
-| Leitura do DHT11 | a cada 30 s | `INTERVALO_DHT` em `main.py` |
-| Validade de um comando do painel | 30 s | `VALIDADE_COMANDO_S` em `server.js` |
+---
 
-</details>
+## 🔧 Como ficou na prática
 
-
-
-## <a id="equipe"></a>👥 Equipe e divisão de tarefas
-
-Cada integrante ficou com uma das oito partes do sistema, na ordem da lista de atividades.
-
-| Integrante | 🧩 Tarefa |
-| :--- | :--- |
-| *Ana Graciano* | 1️⃣ Cancelas (2 servos) |
-| *Laís Zanardi* | 2️⃣ Presença (ultrassônico) |
-| *Pedro Nascimento* | 3️⃣ Guarita manual (potenciômetro e botão) |
-| *Lucas Inácio* | 4️⃣ Sinalização (LED RGB e buzzer) |
-| *João Moura* | 5️⃣ Ambiente (DHT11) |
-| *Gustavo Rosa* | 6️⃣ Lógica (`main.py`) |
-| *João Silva* | 7️⃣ Backend (Node.js e SQLite) |
-| *Enzo Gabriel de Paula* | 8️⃣ Frontend (painel web) |
-
-
-
-## <a id="status"></a>📌 Status
-
-| Parte | Situação | Observação |
-| --- | :--: | --- |
-| 🧠 Controle (`main.py`) | ✅ | Testado com as peças reais na Raspberry |
-| 🚧 Cancelas, sensor, guarita, LED e DHT11 | ✅ | Cada peça testada isoladamente |
-| ⚙️ Servidor e API | ✅ | Verificações de contagem, regras de 409 e validade de comandos |
-| 🖥️ Painel web | ✅ | Testado no computador e no celular |
-| 🔌 Placa de interface | ✅ | Projeto e lista de montagem prontos |
-| 📘 Guia da equipe | 🔄 | Código dos trechos atualizado; texto das tarefas em revisão |
-| 🗂️ Repositório Git | 🔄 | Estrutura pronta; faltam os commits por parte |
-
-
-
-## <a id="hardware"></a>🔌 Hardware
-
-O projeto usa uma **placa de interface** própria, que encaixa no Raspberry e reúne os sensores e atuadores.
-
-<details>
-<summary><b>🖼️ Imagem da montagem da placa</b></summary>
+Primeiro montamos tudo sobre uma base de papelão, para testar as ligações. Depois veio o protótipo completo, com a maquete e o painel.
 
 <p align="center">
-<img src="hardware/previas/previa_montagem_p1.png" alt="Montagem da placa de interface" width="520">
+<img src="hardware/previas/placa_3d_sem_fundo.png" width="620" alt="Placa de interface em 3D (KiCad)"><br>
+<sub>Placa de interface em 3D, feita no KiCad</sub>
 </p>
 
-</details>
-
 <details>
-<summary><b>🧵 Trilhas da placa</b></summary>
-
-<p align="center">
-<img src="hardware/previas/previa_trilhas.png" alt="Trilhas da placa de interface" width="520">
-</p>
-
-Arquivos completos: [`trilhas_tamanho_real_A4.pdf`](hardware/trilhas_tamanho_real_A4.pdf) (para conferir em 1:1 sobre a placa) e [`montagem_placa_interface.pdf`](hardware/montagem_placa_interface.pdf) (lado dos componentes, lado do cobre e lista de montagem).
-
-</details>
-
-<details>
-<summary><b>📍 Pinos usados (numeração BCM)</b></summary>
-
-| Peça | GPIO (pino físico) |
-| --- | --- |
-| 🚧 Servo 1, cancela de entrada | 13 (33) |
-| 🚧 Servo 2, cancela de saída | 26 (37) |
-| 📏 HC-SR04: TRIG e ECHO | 23 (16) e 24 (18) |
-| 💡 LED RGB: vermelho, verde, azul | 4 (7), 17 (11), 27 (13) |
-| 🔔 Buzzer, por transistor | 6 (31) |
-| 🔘 Botão | 5 (29) |
-| 🎛️ Potenciômetro: carrega e lê | 12 (32) e 25 (22) |
-| 🌡️ DHT11 | 22 (15) |
-
-A fonte da verdade do hardware é `hardware/gerador/design.py`. No software, os pinos ficam em `codigo/sistema/pinos.py`.
-
-</details>
-
-
-
-## <a id="projeto-fisico"></a>🔧 Projeto físico
-
-O projeto físico foi feito em duas etapas: primeiro a **bancada de testes**, com os componentes soltos sobre a base de papelão, e depois o **protótipo montado**, com a maquete, o painel e o vídeo de demonstração.
-
-### 🧪 Etapa 1: bancada, antes da prototipação
-
-O Raspberry Pi com a placa de interface, os dois servos das cancelas e o sensor ultrassônico, fixados sobre a base de papelão para validar as ligações.
-
-<details>
-<summary><b>📷 Fotos da bancada</b></summary>
+<summary><b>📷 Fotos da bancada (antes do protótipo)</b></summary>
 
 <table>
 <tr>
-<td align="center"><img src="docs/projeto_fisico/fotos/01-visao-geral-pi-servos-sensor.jpeg" width="380" alt="Bancada: Pi, placa, servos e sensor"><br><sub>Visão geral: Pi, placa, servos e sensor</sub></td>
-<td align="center"><img src="docs/projeto_fisico/fotos/04-vista-de-cima-placa-servos-sensor.jpeg" width="380" alt="Bancada: vista de cima"><br><sub>Vista de cima sobre a base</sub></td>
+<td align="center"><img src="docs/projeto_fisico/fotos/01-visao-geral-pi-servos-sensor.jpeg" width="380" alt="Bancada: Pi, placa, servos e sensor"><br><sub>Pi, placa, servos e sensor</sub></td>
+<td align="center"><img src="docs/projeto_fisico/fotos/04-vista-de-cima-placa-servos-sensor.jpeg" width="380" alt="Bancada: vista de cima"><br><sub>Vista de cima</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/projeto_fisico/fotos/05-vista-lateral-placa-servos-sensor.jpeg" width="380" alt="Bancada: vista lateral"><br><sub>Vista lateral: placa e servos</sub></td>
-<td align="center"><img src="docs/projeto_fisico/fotos/06-vista-lateral-aproximada.jpeg" width="380" alt="Bancada: vista lateral aproximada"><br><sub>Vista lateral aproximada</sub></td>
+<td align="center"><img src="docs/projeto_fisico/fotos/05-vista-lateral-placa-servos-sensor.jpeg" width="380" alt="Bancada: vista lateral"><br><sub>Vista lateral</sub></td>
+<td align="center"><img src="docs/projeto_fisico/fotos/02-materiais-eva-preto-branco.jpeg" width="380" alt="Materiais: EVA preto e branco"><br><sub>Materiais: EVA preto e branco</sub></td>
 </tr>
 </table>
 
 </details>
-
-<details>
-<summary><b>🧰 Fotos dos materiais (EVA preto e branco)</b></summary>
-
-<table>
-<tr>
-<td align="center"><img src="docs/projeto_fisico/fotos/02-materiais-eva-preto-branco.jpeg" width="380" alt="Materiais: EVA preto e branco"><br><sub>EVA preto e branco</sub></td>
-<td align="center"><img src="docs/projeto_fisico/fotos/03-materiais-eva-detalhe.jpeg" width="380" alt="Materiais: detalhe"><br><sub>Detalhe do material</sub></td>
-</tr>
-</table>
-
-</details>
-
-### 🏁 Etapa 2: protótipo montado
-
-Com o painel no notebook, a maquete e as cancelas em funcionamento.
 
 <details>
 <summary><b>📷 Fotos do protótipo montado</b></summary>
 
 <table>
 <tr>
-<td align="center"><img src="docs/projeto_fisico/fotos/07-painel-e-maquete-em-funcionamento.jpeg" width="380" alt="Painel no notebook e maquete em funcionamento"><br><sub>Painel no notebook e maquete em funcionamento</sub></td>
 <td align="center"><img src="docs/projeto_fisico/fotos/08-maquete-detalhe.jpeg" width="380" alt="Detalhe da maquete"><br><sub>Detalhe da maquete</sub></td>
+<td align="center"><img src="docs/imagens/painel-web.png" width="380" alt="Painel web"><br><sub>Painel web</sub></td>
 </tr>
 </table>
 
 </details>
 
-**▶️ [Assistir ao vídeo do protótipo funcionando](docs/projeto_fisico/video/demonstracao-projeto-fisico.mp4)** (10,8 MB, abre no player do GitHub)
+---
 
+## 🧱 Maquete de papelão
 
+Feita só com papelão, EVA e papel impresso. Ela desmonta em peças planas que cabem numa pasta.
 
-## <a id="executar"></a>🛠️ Como executar
+<p align="center">
+<img src="maquete/previas/vista_3d.png" width="760" alt="Vista 3D da maquete do estacionamento"><br>
+<sub>Vista 3D: abra <a href="maquete/maquete_3d.html">maquete_3d.html</a> para girar o modelo</sub>
+</p>
 
-### 1️⃣ No Raspberry (sistema completo)
+- 📖 [Passo a passo para montar](maquete/LEIA-ME.md)
+- 🧭 [Proposta e decisões](maquete/FASE1_proposta.md)
+- 🖨️ [Arquivos para imprimir](maquete/impressao/)
 
-Os arquivos ficam em `~/codigos/final`.
+---
 
-```bash
-# uma vez: instalar as dependências do servidor
-cd ~/codigos/final && npm install
+## 🚀 Como rodar no Raspberry
 
-# servidor e painel (não mexe nas peças físicas)
-./web.sh start            # depois abra http://raspberrypi.local:3000
-
-# parte física (move cancelas, LED e buzzer)
-python3 -u main.py        # Ctrl+C para parar
-```
-
-Para rodar tudo sozinho ao ligar o Raspberry, use os serviços `estacionamento-web.service` e `estacionamento.service` (veja o guia).
-
-### 2️⃣ Testar uma peça por vez
+No Raspberry, a partir da pasta `~/codigos/final`:
 
 ```bash
-cd ~/codigos/final
-python3 teste_isolado.py led      # também: buzzer, servo_entrada, servo_saida,
-                                  #        botao, pot, distancia, dht
+npm install            # só na primeira vez
+./web.sh start         # painel em http://raspberrypi.local:3000
+python3 -u main.py     # parte física (cancelas, LED e buzzer)
 ```
-
-> ⚠️ Pare o `main.py` antes de testar uma peça. Dois programas não podem usar os mesmos pinos ao mesmo tempo. Se aparecer `GPIO not allocated`, há outra instância do `main.py` rodando.
 
 <details>
-<summary><b>🔁 Gerar de novo o guia e os arquivos da placa</b></summary>
+<summary><b>🧪 Testar uma peça por vez</b></summary>
 
 ```bash
-# guia (precisa só de Python 3)
-cd guia/gerador && python3 montar.py
-
-# placa (precisa do KiCad 10 e do PyMuPDF)
-cd hardware/gerador
-"C:\Program Files\KiCad\10.0\bin\python.exe" gerar_placa.py ../
-python exportar.py ../
+python3 teste_isolado.py led     # também: buzzer, servo_entrada, servo_saida, botao, pot, distancia, dht
 ```
+
+Pare o `main.py` antes de testar uma peça.
 
 </details>
 
+---
 
+## 📚 Onde ler mais
 
-## <a id="api"></a>🔗 API
-
-| Método e caminho | Quem usa | Para que serve |
-| --- | :--: | --- |
-| `POST /api/eventos` | 🧠 `main.py` | Conta uma entrada ou saída (409 se saída sem ninguém dentro) |
-| `GET /api/resumo` | 🖥️ painel e 🧠 `main.py` | Dentro, vagas, entradas e saídas da semana, por dia |
-| `POST /api/ambiente` | 🧠 `main.py` | Guarda uma leitura do DHT11 |
-| `GET /api/ambiente/ultima` | 🖥️ painel | Última temperatura e umidade |
-| `POST /api/comandos` | 🖥️ painel | Pede a liberação da saída |
-| `GET /api/comandos/proximo` | 🧠 `main.py` | Entrega o próximo comando (204 se não há nenhum) |
-
-<details>
-<summary><b>📁 O que tem em <code>codigo/sistema/</code></b></summary>
-
-| Arquivo | Função |
-| --- | --- |
-| `main.py` | Controle principal: decide, aciona e registra |
-| `cancelas.py` | Servos das cancelas (PWM) |
-| `presenca.py` | Sensor ultrassônico |
-| `manual.py` | Potenciômetro e botão da guarita |
-| `sinais.py` | LED RGB e buzzer |
-| `ambiente.py` | DHT11, lido com `libgpiod` (sem `pip`) |
-| `pinos.py` | Pinos da placa em um lugar só |
-| `server.js` | Backend (Node.js + Express + SQLite) |
-| `public/index.html` | Painel web |
-| `teste_isolado.py` | Testa uma peça por vez |
-| `web.sh` | Liga e desliga o servidor e o painel |
-| `*.service` | Serviços para rodar em segundo plano |
-
-</details>
-
-
-
-## <a id="maquete"></a>🧱 Maquete
-
-A maquete representa o estacionamento onde o sistema roda. Ela é feita só com papelão, EVA e papel impresso, e desmonta em peças planas que cabem numa pasta de arquivos.
-
-| O que tem | Onde está |
-| --- | --- |
-| 📖 Passo a passo (imprimir, cortar, montar e guardar) | [`maquete/LEIA-ME.md`](maquete/LEIA-ME.md) |
-| 🧭 Proposta e decisões (versão 5, só com tesoura) | [`maquete/FASE1_proposta.md`](maquete/FASE1_proposta.md) |
-| 🎲 Vista 3D no navegador | [`maquete/maquete_3d.html`](maquete/maquete_3d.html) |
-| 📐 Planta cotada | [`maquete/previas/planta_v5.png`](maquete/previas/planta_v5.png) |
-| 🖨️ Arquivos para imprimir | [`maquete/impressao/`](maquete/impressao/) |
-| ⚙️ Gerador (todas as medidas em `design.py`) | [`maquete/gerador/`](maquete/gerador/) |
-
-<details>
-<summary><b>🧰 O que você precisa</b></summary>
-
-- Papelão de 2,5 mm (cerca de 0,23 m² da chapa)
-- EVA preto de 1 mm (311 × 200 mm)
-- 1 folha de etiquetas PIMACO 6282
-- Fita crepe, cola branca, cola bastão, tesoura, régua e alfinete
-
-</details>
-
-**Regra da versão 5:** todo corte começa na borda da peça e nenhum recorte tem menos de 10 mm de largura, para dar para cortar só com tesoura. Os encaixes viraram dobradiças de fita crepe, tiras coladas e carros colados.
-
-Para gerar de novo os arquivos a partir das medidas, rode na pasta `maquete/gerador/`:
-
-```bash
-python -B design.py
-python -B conferir.py
-python -B gerar_3d.py ../maquete_3d.html
-python -B gerar_gabaritos.py ../impressao
-python -B gerar_adesivos.py ../impressao
-python -B conferir_pdf.py ../impressao
-```
-
-
-
-## <a id="testes"></a>🧪 Testes realizados
-
-- ✅ **API:** contagem de eventos, recusa de saída sem ninguém dentro, validade de comandos antigos e leituras de ambiente.
-- ✅ **Painel:** renderizado no navegador do computador e em 380 px de largura (celular).
-- ✅ **Peças físicas:** cada uma testada isoladamente na Raspberry.
-- ✅ **Controle:** `main.py` rodado primeiro com cancelas e LED simulados, depois com as peças reais.
-
-
-
-## <a id="documentacao"></a>📚 Documentação
-
-| Página | O que tem |
-| --- | --- |
+| Documento | Para que serve |
+| :-- | :-- |
 | 📘 [Guia da equipe](guia/index.html) | Passo a passo de cada tarefa, com figuras |
+| 📕 [Guia em PDF](guia/guia_equipe.pdf) | A mesma versão, para imprimir |
 | 📦 [Transferência](docs/transferencia.md) | O que tem no repositório e como usar cada parte |
 | 🧾 [Lista de materiais](docs/lista_de_materiais.csv) | Componentes da placa |
-| 🔗 [Netlist](docs/ligacoes_netlist.csv) | Ligações elétricas da placa |
 
+---
 
+<details>
+<summary><b>🔎 Saiba mais</b></summary>
+
+### Pinos (numeração BCM)
+
+| Peça | GPIO |
+| :-- | :-- |
+| Servo da entrada / da saída | 13 / 26 |
+| Ultrassônico (TRIG / ECHO) | 23 / 24 |
+| LED RGB (vermelho / verde / azul) | 4 / 17 / 27 |
+| Buzzer | 6 |
+| Botão | 5 |
+| Potenciômetro (carrega / lê) | 12 / 25 |
+| DHT11 | 22 |
+
+### Regras do sistema
+
+| Regra | Valor |
+| :-- | :-- |
+| Vagas | 7 |
+| Carro na entrada | menos de 5 cm, confirmado em duas leituras |
+| Tempo para fechar a cancela | 2 s |
+| Intervalo mínimo entre entradas | 6 s |
+| Leitura de temperatura e umidade | a cada 30 s |
+
+### API (como o painel e a Raspberry conversam)
+
+| O que acontece | Quem faz |
+| :-- | :--: |
+| Registra uma entrada ou saída | 🧠 Raspberry |
+| Recusa saída se não há ninguém dentro | 🧠 Raspberry |
+| Mostra vagas e movimento no painel | 🖥️ Painel |
+| Guarda temperatura e umidade | 🧠 Raspberry |
+| Pede a liberação da saída | 🖥️ Painel |
+| Recebe o pedido e abre a cancela | 🧠 Raspberry |
+
+As rotas exatas estão em [`codigo/sistema/server.js`](codigo/sistema/server.js).
+
+### Testes realizados
+
+- ✅ API: contagem de eventos, recusa de saída sem ninguém dentro e comandos antigos.
+- ✅ Painel: no computador e em tela de celular.
+- ✅ Peças físicas: cada uma testada separadamente.
+- ✅ Controle: `main.py` rodado com as peças reais.
+
+### Pastas do repositório
+
+| Pasta | Conteúdo |
+| :-- | :-- |
+| `codigo/sistema/` | Sistema final |
+| `codigo/starter/` | Códigos de partida das 8 tarefas |
+| `codigo/exemplos_originais/` | Scripts do começo do projeto |
+| `guia/` | Guia da equipe e o gerador dele |
+| `hardware/` | Projeto da placa no KiCad |
+| `maquete/` | Maquete e o gerador dela |
+| `docs/` | Documentação, fotos e vídeo |
+
+</details>
+
+---
 
 <p align="center"><a href="#topo">⬆️ Voltar ao topo</a></p>
-
-
-
-
